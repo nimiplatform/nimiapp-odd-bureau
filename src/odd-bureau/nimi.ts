@@ -21,7 +21,7 @@ export async function photoFromFile(file: Blob, name: string): Promise<Photo> {
   canvas.width = Math.round(bitmap.width * scale); canvas.height = Math.round(bitmap.height * scale);
   canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height); bitmap.close();
   const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('照片处理失败，请换一张重试。')), 'image/jpeg', 0.9));
-  return { url: URL.createObjectURL(blob), blob, name, width: canvas.width, height: canvas.height, source: 'upload' };
+  return { url: URL.createObjectURL(blob), blob, name: name.trim().slice(0, 200) || '我的照片', width: canvas.width, height: canvas.height, source: 'upload' };
 }
 
 export async function samplePhoto(): Promise<Photo> {

@@ -133,7 +133,7 @@ export const TASKS = ['story', 'reading', 'stage'] as const;
 export type StrikeTask = typeof TASKS[number];
 export const TASK_NAMES: Record<StrikeTask, string> = { story: '写故事', reading: '朗读', stage: '布置现场' };
 export type StrikeOffer = { task: StrikeTask; needsCredit: boolean; needsRest: string | null };
-export type StrikePerson = { objectId: string; persona: string; greeting: string; offers: StrikeOffer[] };
+export type StrikePerson = { objectId: string; persona: string; offers: StrikeOffer[] };
 export type StrikePlan = { title: string; situation: string; people: StrikePerson[] };
 export type PromiseAction = { kind: 'rest'; objectId: string } | { kind: 'credit'; objectId: string } | { kind: 'assign'; objectId: string; task: StrikeTask };
 export type PromiseState = { rest: string | null; credit: string | null; tasks: Partial<Record<StrikeTask, string>>; promises: PromiseAction[] };
@@ -155,7 +155,7 @@ export function parseStrike(raw: unknown, props: readonly Prop[]): StrikePlan {
       return { task, needsCredit: offer.needsCredit, needsRest };
     });
     if (new Set(offers.map(o => o.task)).size !== offers.length) throw new Error('同一件工作不能有互相冲突的条件。');
-    return { objectId, persona: shortText(person.persona, 80), greeting: shortText(person.greeting, 150), offers };
+    return { objectId, persona: shortText(person.persona, 80), offers };
   });
   exactCast(people.map(p => p.objectId), props);
   const plan = { title: shortText(value.title, 45), situation: shortText(value.situation, 220), people };
@@ -249,6 +249,63 @@ export function machinePrompt(props: readonly Prop[]): string {
 }
 export function strikePrompt(props: readonly Prop[]): string {
   return `为奇物局设计一场温暖好笑的物品罢工。任务固定：办完故事会，需要story写故事、reading朗读、stage布置现场三个岗位。只有一个休假名额和一个署名名额；休假的角色不能工作，署名必须给工作者；每件物品最多承担两份工作。物品身份不可改，每件提供1–3种可做的工作，体现它的用途。每个offer可要求先给自己署名(needsCredit)或先让另一件物品休息(needsRest精确id)，不要求时写false/null。所有条件必须由这些字段完整表达，不能在台词里增加隐含条件。至少一个角色想要署名、至少一个要求让朋友休息；同时提供足够无条件选择，确保三个岗位、休假和署名能同时落实。不是找坏人，最终安排可以不止一种。
-只输出中文JSON：{"title":"15字内故事会标题","situation":"两句有趣的开场冲突，80字内","people":[{"objectId":"精确id","persona":"20字内性格","greeting":"40字内第一人称诉求","offers":[{"task":"story或reading或stage","needsCredit":false,"needsRest":null}]}]}。
+开场只写现场气氛，性格只写物品的个性；都不能表达署名、休假或工作的条件，条件只在offers字段中声明，界面会直接显示这些条件。
+只输出中文JSON：{"title":"15字内故事会标题","situation":"两句有趣的开场气氛，80字内","people":[{"objectId":"精确id","persona":"20字内性格","offers":[{"task":"story或reading或stage","needsCredit":false,"needsRest":null}]}]}。
 物品清单：${JSON.stringify(props.map(p => ({ id: p.id, label: p.label })))}。每件恰好出现一次。`;
+}
+
+export type PlaySave = { id: string; photoPath: string; photoName: string; photoSource: "sample" | "upload"; props: Prop[]; round: PlayRound };
+
+function restoreNotes(value: unknown): Note[] {
+  if (!Array.isArray(value) || value.length > 32) throw new Error('保存的声音不完整。');
+  return value.map(item => {
+    const n = record(item);
+    if (!Number.isInteger(n.pitch) || Number(n.pitch) < 0 || Number(n.pitch) > 4 || !Number.isInteger(n.beats) || Number(n.beats) < 1 || Number(n.beats) > 4) throw new Error('保存的音符不完整。');
+    return { pitch: Number(n.pitch), beats: Number(n.beats) };
+  });
+}
+// @nimi-authority: rule.odd-bureau.playground.persistence
+// @nimi-authority: rule.odd-bureau.playground.photo
+export function parsePlaySave(input: unknown): PlaySave {
+  const value = record(input);
+  if (!Array.isArray(value.props) || value.props.length < 3 || value.props.length > 6) throw new Error('保存的照片物品不完整。');
+  const props = value.props.map((item, index) => {
+    const p = record(item), b = record(p.box);
+    const { x1, y1, x2, y2 } = b;
+    if (typeof x1 !== 'number' || typeof y1 !== 'number' || typeof x2 !== 'number' || typeof y2 !== 'number'
+      || ![x1, y1, x2, y2].every(n => Number.isFinite(n) && n >= 0 && n <= 1) || x1 >= x2 || y1 >= y2) throw new Error('保存的位置不完整。');
+    if (p.id !== `object-${index + 1}`) throw new Error('保存的物品身份不完整。');
+    return { id: p.id, label: shortText(p.label, 100), box: { x1, y1, x2, y2 } };
+  });
+  if (value.photoSource !== 'sample' && value.photoSource !== 'upload') throw new Error('保存的照片身份不完整。');
+  const r = record(value.round), s = record(r.state);
+  let round: PlayRound;
+  if (r.kind === 'machine') {
+    const plan = parseMachine(r.plan, props), rawStored = record(s.stored), stored: Record<string, Note[]> = {};
+    for (const [id, notes] of Object.entries(rawStored)) {
+      if (!plan.nodes.some(n => n.objectId === id && n.op === 'store')) throw new Error('保存的容器没有对齐照片。');
+      stored[id] = restoreNotes(notes);
+    }
+    if (!Array.isArray(s.path) || s.path.length > props.length || new Set(s.path).size !== s.path.length || s.path.some(id => !props.some(p => p.id === id)) || !Number.isSafeInteger(s.runs) || Number(s.runs) < 0 || typeof s.solved !== 'boolean') throw new Error('保存的线路不完整。');
+    const last = s.lastRun === null ? null : record(s.lastRun);
+    if (last && (!Array.isArray(last.path) || last.path.some(id => typeof id !== 'string'))) throw new Error('保存的运行结果不完整。');
+    const lastRun = last ? simulateMachine(plan, props, last.path as string[]) : null;
+    if ((s.runs === 0 && (lastRun || s.solved || Object.values(stored).some(notes => notes.length))) || (Number(s.runs) > 0 && !lastRun)) throw new Error('保存的运行次数与结果不一致。');
+    if (lastRun) {
+      const goal = machineChallenge(plan, props);
+      const won = lastRun.receiver === goal.receiver && lastRun.cost <= goal.cost && sameNotes(lastRun.notes, goal.notes);
+      if ((s.runs === 1 && s.solved !== won) || (won && !s.solved)) throw new Error('保存的挑战结果与线路不一致。');
+    }
+    round = { kind: 'machine', plan, state: { path: s.path as string[], stored, runs: Number(s.runs), solved: s.solved, lastRun } };
+  } else if (r.kind === 'strike') {
+    const plan = parseStrike(r.plan, props), promises = parseActions(s.promises, props), committed = commitPromises(plan, promises, []);
+    if (!Array.isArray(s.journal) || s.journal.length > 12 || !Number.isInteger(s.curtain) || Number(s.curtain) < 0 || Number(s.curtain) > 3) throw new Error('保存的故事会不完整。');
+    const performance = s.performance === null ? null : parsePerformance({ parts: s.performance });
+    if (s.performance !== null && (!performance || !strikeReady(committed))) throw new Error('故事会的承诺还没有落实。');
+    if (!performance && s.curtain !== 0) throw new Error('尚未开场的故事会不能已经谢幕。');
+    round = { kind: 'strike', plan, state: { promises, journal: s.journal.map(x => shortText(x, 500)), performance, curtain: Number(s.curtain) } };
+  } else throw new Error('没有这种已保存的活动。');
+  const id = shortText(value.id, 100), photoPath = shortText(value.photoPath, 512);
+  if (!/^[a-zA-Z0-9-]+$/.test(id) || !/^play-scenes\/[a-zA-Z0-9-]+\.jpg$/.test(photoPath)) throw new Error('保存的照片路径不完整。');
+  return { id, photoPath, photoName: shortText(value.photoName, 200), photoSource: value.photoSource, props, round };
 }

@@ -40,12 +40,13 @@ export function OddBureau({ onExit }: { onExit?: () => void } = {}) {
   const input = useRef<HTMLInputElement>(null);
   const operation = useRef<AbortController | null>(null);
   const voiceOperation = useRef<AbortController | null>(null);
+  const photoRequest = useRef<AbortController | null>(null);
   const audio = useRef<HTMLAudioElement | null>(null);
   const photoRef = useRef<Photo | null>(null);
   const sessionRef = useRef<Session | null>(null);
   const saveQueue = useRef(Promise.resolve());
   const chatBottom = useRef<HTMLDivElement>(null);
-  const busy = !!stage || talking;
+  const busy = booting || !!stage || talking;
   async function checkConfiguration() {
     try { setConfigured(isConfigured(await getClient().aiConfig.get())); }
     catch { setConfigured(false); }
@@ -85,20 +86,25 @@ export function OddBureau({ onExit }: { onExit?: () => void } = {}) {
       catch (err) { if (live) setError(errorMessage(err)); }
       finally { if (live) setBooting(false); }
     })().finally(() => { if (live) setBooting(false); });
-    return () => { live = false; operation.current?.abort(); voiceOperation.current?.abort(); audio.current?.pause(); };
+    return () => { live = false; operation.current?.abort(); photoRequest.current?.abort(); voiceOperation.current?.abort(); if (audio.current) { audio.current.pause(); URL.revokeObjectURL(audio.current.src); } if (photoRef.current) URL.revokeObjectURL(photoRef.current.url); };
   }, []);
   useEffect(() => { chatBottom.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, [streaming, session?.messages, selected]);
 
   async function chooseFile(file: File) {
-    if (busy) return;
-    setError('');
-    try { const next = await photoFromFile(file, file.name.replace(/\.[^.]+$/, '')); replacePhoto(next); setSession(null); sessionRef.current = null; setSelected(null); setAccusing(false); setConfirmAccusation(null); }
-    catch (err) { setError(errorMessage(err)); }
+    if (busy || photoRequest.current || operation.current) return;
+    const controller = new AbortController(); photoRequest.current = controller;
+    stopVoice(); setBooting(true); setError('');
+    try {
+      const next = await photoFromFile(file, file.name.replace(/\.[^.]+$/, ''));
+      if (controller.signal.aborted) { URL.revokeObjectURL(next.url); return; }
+      replacePhoto(next); setSession(null); sessionRef.current = null; setStorageNote(''); setSelected(null); setAccusing(false); setConfirmAccusation(null);
+    } catch (err) { if (!controller.signal.aborted) setError(errorMessage(err)); }
+    finally { if (photoRequest.current === controller) { photoRequest.current = null; if (!controller.signal.aborted) setBooting(false); } }
   }
   async function onFile(event: ChangeEvent<HTMLInputElement>) { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; if (file) await chooseFile(file); }
 
   async function startCase() {
-    if (!photo || busy) return;
+    if (!photo || busy || photoRequest.current || operation.current) return;
     if (!configured) { setShowSetup(true); return; }
     stopVoice(); setError(''); setStorageNote(''); setAccusing(false); setConfirmAccusation(null); setShowHint(false); setSelected(null); setPanel('witness'); setFoundProps([]);
     const controller = new AbortController(); operation.current = controller;
@@ -208,7 +214,7 @@ export function OddBureau({ onExit }: { onExit?: () => void } = {}) {
               {complete && <div className="scene-verdict"><Fingerprint size={38}/><span>{session!.accusation === session!.mystery.culpritId ? '漂亮，破案了！' : '真相另有其物。'}</span><p>原来是{culprit?.name}在搞鬼。</p></div>}
               {stage && <div className="generation-overlay" role="status" aria-live="polite"><div className="scan-mark"><Search size={36}/></div><h2>{stage === 'locating' ? '嘘，看看谁在现场…' : '物品们正在串供…'}</h2><p>{stage === 'locating' ? foundProps.length ? `已找到：${foundProps.map(prop => prop.label).join('、')}。继续寻找下一位…` : '正在逐个寻找可以登场的物品，首次运行可能需要一点时间' : '正在编织角色、证词和一个说得通的真相'}</p><Button className="cancel-key" onClick={() => operation.current?.abort()}>取消开案</Button></div>}
               {dragging && <div className="drop-overlay">放下照片，让它们登场。</div>}
-            </div> : <button className="empty-photo" onClick={() => input.current?.click()}><ImagePlus size={48}/><span>{booting ? '正在打开事务所…' : '上传一张照片，故事从这里开始'}</span></button>}
+            </div> : <button className="empty-photo" disabled={busy} onClick={() => input.current?.click()}><ImagePlus size={48}/><span>{booting ? '正在打开事务所…' : '上传一张照片，故事从这里开始'}</span></button>}
           </div>
           <div className="scene-bottom"><span>{session ? accusing ? '点击你认为的嫌疑物' : complete ? '同一张照片，还能发生下一桩怪案。' : miss ? '这里暂时没有角色。亮起的物品可以调查。' : '试着点点照片里的物品。它们都有话说。' : '桌面、客厅、书架… 越日常，越意想不到。'}</span>{session && !complete && <button className="hint-key" onClick={() => { setShowHint(v => !v); setMiss(false); }} disabled={busy}><Lightbulb size={15}/>{showHint ? '收起提示' : '找不到？'}</button>}</div>
           {session && <div className="cast-strip" aria-label="可调查物品，亦可用键盘选择">{session.props.map((prop, index) => {

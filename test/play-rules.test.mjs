@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { allowedOps, commitPromises, editMachinePath, findStrikeSolution, initialMachine, lineCost, machineChallenge, parseActions, parseMachine, parsePerformance, parseStrike, runMachine, simulateMachine, strikeReady } from '../src/odd-bureau/play-rules.ts';
+import { allowedOps, commitPromises, editMachinePath, findStrikeSolution, initialMachine, lineCost, machineChallenge, parseActions, parseMachine, parsePerformance, parsePlaySave, parseStrike, runMachine, simulateMachine, strikeReady } from '../src/odd-bureau/play-rules.ts';
 
 // Synthetic rule examples only. Live acceptance uses actual Runtime generation.
 const props = [
@@ -54,10 +54,10 @@ test('AI cannot invent an operation, reclassify a container, or omit a device', 
 
 const strike = {
   title: 'The story meeting', situation: 'Someone needs a night off.', people: [
-    { objectId: 'clock', persona: 'punctual', greeting: 'I can read.', offers: [{ task: 'reading', needsCredit: false, needsRest: 'lamp' }] },
-    { objectId: 'book', persona: 'proud', greeting: 'Put my name on it.', offers: [{ task: 'story', needsCredit: true, needsRest: null }] },
-    { objectId: 'lamp', persona: 'tired', greeting: 'A rest, please.', offers: [{ task: 'stage', needsCredit: false, needsRest: null }] },
-    { objectId: 'cup', persona: 'helpful', greeting: 'I can decorate.', offers: [{ task: 'stage', needsCredit: false, needsRest: null }] },
+    { objectId: 'clock', persona: 'punctual', offers: [{ task: 'reading', needsCredit: false, needsRest: 'lamp' }] },
+    { objectId: 'book', persona: 'proud', offers: [{ task: 'story', needsCredit: true, needsRest: null }] },
+    { objectId: 'lamp', persona: 'tired', offers: [{ task: 'stage', needsCredit: false, needsRest: null }] },
+    { objectId: 'cup', persona: 'helpful', offers: [{ task: 'stage', needsCredit: false, needsRest: null }] },
   ],
 };
 test('language proposals and direct actions share concrete prerequisites and irreversible allocations', () => {
@@ -102,4 +102,78 @@ test('promises that foreclose completion are detectable without revoking them', 
   assert.equal(deadEnd.rest, 'book');
   const possible = commitPromises(valid, [], [{ kind: 'rest', objectId: 'lamp' }]);
   assert.ok(findStrikeSolution(valid, possible.promises));
+});
+
+const locatedProps = props.map((prop, i) => ({ ...prop, id: `object-${i + 1}` }));
+const locatedId = id => locatedProps[props.findIndex(p => p.id === id)].id;
+const savedMachinePlan = { ...machine, nodes: machine.nodes.map(n => ({ ...n, objectId: locatedId(n.objectId) })) };
+const savedStrikePlan = { ...strike, people: strike.people.map(p => ({ ...p, objectId: locatedId(p.objectId), offers: p.offers.map(o => ({ ...o, needsRest: o.needsRest && locatedId(o.needsRest) })) })) };
+const savedRound = round => ({ id: 'saved-round', photoPath: 'play-scenes/saved-photo.jpg', photoName: '照片', photoSource: 'upload', props: locatedProps, round });
+const machineSave = state => savedRound({ kind: 'machine', plan: savedMachinePlan, state });
+const strikeSave = state => savedRound({ kind: 'strike', plan: savedStrikePlan, state });
+
+test('machine saves restore partial edits, stored notes, and completed challenges after later experiments', () => {
+  assert.deepEqual(parsePlaySave(machineSave(initialMachine())), machineSave(initialMachine()));
+  const goal = machineChallenge(savedMachinePlan, locatedProps);
+  const solved = runMachine(savedMachinePlan, locatedProps, { ...initialMachine(), path: goal.path });
+  const experiment = runMachine(savedMachinePlan, locatedProps, { ...solved, path: [locatedId('clock'), locatedId('cup')] });
+  const partial = { ...experiment, path: [locatedId('book')], stored: { [locatedId('cup')]: [] } };
+  for (const state of [solved, experiment, partial]) {
+    const save = machineSave(state);
+    assert.deepEqual(parsePlaySave(JSON.parse(JSON.stringify(save))), save);
+  }
+  const forgedTrace = structuredClone(machineSave(experiment));
+  forgedTrace.round.state.lastRun.notes = [];
+  forgedTrace.round.state.lastRun.trace = [];
+  assert.deepEqual(parsePlaySave(forgedTrace).round.state.lastRun, experiment.lastRun);
+});
+
+test('saved playground geometry and photo identity are validated without coercion', () => {
+  for (const coordinate of [null, false, '', '0.1', undefined, NaN, Infinity, -0.1, 1.1]) {
+    const save = machineSave(initialMachine());
+    save.props = save.props.map((p, i) => i ? p : { ...p, box: { ...p.box, x1: coordinate } });
+    assert.throws(() => parsePlaySave(save), `x1: ${String(coordinate)}`);
+  }
+  for (const id of ['__proto__', 'constructor', 'toString', 'other-object']) {
+    const save = machineSave(initialMachine());
+    save.props = save.props.map((p, i) => i ? p : { ...p, id });
+    assert.throws(() => parsePlaySave(save), id);
+  }
+  for (const photoPath of ['current-case.json', '../photo.jpg', 'play-scenes/../photo.jpg', '/play-scenes/photo.jpg']) {
+    assert.throws(() => parsePlaySave({ ...machineSave(initialMachine()), photoPath }), photoPath);
+  }
+  for (const photoSource of [null, ['upload'], {}, 'unknown']) {
+    assert.throws(() => parsePlaySave({ ...machineSave(initialMachine()), photoSource }));
+  }
+});
+
+test('saved machines cannot claim notes or success before a run or contradict their only run', () => {
+  const direct = runMachine(savedMachinePlan, locatedProps, { ...initialMachine(), path: [locatedId('clock'), locatedId('cup')] });
+  const solved = runMachine(savedMachinePlan, locatedProps, { ...initialMachine(), path: machineChallenge(savedMachinePlan, locatedProps).path });
+  for (const state of [
+    { ...initialMachine(), solved: true },
+    { ...initialMachine(), stored: { [locatedId('cup')]: [{ pitch: 0, beats: 1 }] } },
+    { ...direct, runs: 0 },
+    { ...direct, lastRun: null },
+    { ...direct, solved: true },
+    { ...solved, solved: false },
+    { ...direct, stored: { [locatedId('cup')]: Array(33).fill({ pitch: 0, beats: 1 }) } },
+    { ...direct, stored: { [locatedId('clock')]: [{ pitch: 0, beats: 1 }] } },
+  ]) assert.throws(() => parsePlaySave(machineSave(state)));
+});
+
+test('strike saves retain valid commitments and reject rewritten promise chronology or premature performance', () => {
+  const promises = commitPromises(savedStrikePlan, [], findStrikeSolution(savedStrikePlan)).promises;
+  const initial = { promises: [], journal: [], performance: null, curtain: 0 };
+  const agreed = { ...initial, promises };
+  const performed = { ...agreed, performance: ['杯子想看海。', '书本折出一只小船。', '叶子成了帆。'], curtain: 2 };
+  for (const state of [initial, agreed, performed, { ...performed, curtain: 3 }, { ...initial, promises: [{ kind: 'rest', objectId: locatedId('book') }] }]) {
+    assert.deepEqual(parsePlaySave(strikeSave(state)), strikeSave(state));
+  }
+  for (const state of [
+    { ...agreed, promises: [...promises.filter(a => a.kind === 'assign'), ...promises.filter(a => a.kind !== 'assign')] },
+    { ...initial, curtain: 1 },
+    { ...performed, promises: [] },
+    { ...performed, curtain: 4 },
+  ]) assert.throws(() => parsePlaySave(strikeSave(state)));
 });
