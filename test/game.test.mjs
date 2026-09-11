@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { hitProp, propsFromLocate, parseMystery, canAccuse, dialoguePrompt } from '../src/odd-bureau/game.ts';
+import { hitProp, propsFromLocate, parseMystery, parseSession, canAccuse, dialoguePrompt } from '../src/odd-bureau/game.ts';
 
 const props = [
   { id: 'object-1', label: 'cup', box: { x1: .1, y1: .2, x2: .3, y2: .5 } },
@@ -40,6 +40,62 @@ test('a case cannot introduce an unseen culprit, duplicate a character or invent
 test('story generation cannot rename a located cup into another kind of object', () => {
   const renamed = { ...mystery, characters: mystery.characters.map(c => ({ ...c, name: 'a spaceship' })) };
   assert.deepEqual(parseMystery(JSON.stringify(renamed), props).characters.map(c => c.name), ['cup', 'clock', 'book']);
+});
+
+test('character IDs are normalized before looking up the located name', () => {
+  const padded = { ...mystery, characters: mystery.characters.map(c => ({ ...c, objectId: ` ${c.objectId} ` })) };
+  assert.deepEqual(parseMystery(JSON.stringify(padded), props), mystery);
+});
+
+const savedSession = {
+  id: 'test-case', mood: 'missing', createdAt: '2026-09-12T00:00:00.000Z',
+  photoPath: 'cases/test-case.jpg', photoName: 'Breakfast', photoSource: 'upload',
+  props, mystery, discovered: ['object-1', 'object-3'], evidence: ['object-1', 'object-3'],
+  messages: { 'object-1': [{ who: 'object', text: 'Evidence from cup.' }] }, accusation: null,
+};
+
+test('saved cases round-trip and retain the validated mystery on restoration', () => {
+  assert.deepEqual(parseSession(JSON.parse(JSON.stringify(savedSession))), savedSession);
+  const completed = { ...savedSession, accusation: 'object-2' };
+  assert.deepEqual(parseSession(completed), completed);
+  const renamed = { ...mystery, characters: mystery.characters.map(c => ({ ...c, name: 'spaceship' })) };
+  assert.deepEqual(parseSession({ ...savedSession, mystery: renamed }).mystery, mystery);
+});
+
+test('saved cases reject broken references and dialogue before rendering', () => {
+  for (const patch of [
+    { evidence: ['object-1', 'missing'] },
+    { evidence: ['object-1', 'object-1'] },
+    { discovered: ['missing'] },
+    { discovered: ['object-1'] },
+    { messages: [] },
+    { messages: { missing: [] } },
+    { messages: { 'object-2': [] } },
+    { messages: { 'object-1': {} } },
+    { messages: { 'object-1': [null] } },
+    { messages: { 'object-1': [{ who: 'system', text: 'Invalid role' }] } },
+    { messages: { 'object-1': [{ who: 'object', text: {} }] } },
+    { accusation: 'missing' },
+    { accusation: 'object-2', evidence: [] },
+  ]) assert.throws(() => parseSession({ ...savedSession, ...patch }), JSON.stringify(patch));
+});
+
+test('saved cases reject invalid geometry and metadata before loading the photo', () => {
+  for (const patch of [
+    { props: [] },
+    { props: [props[0], props[0], props[2]] },
+    { props: [{ ...props[0], id: 'constructor' }, ...props.slice(1)] },
+    { props: [null, ...props.slice(1)] },
+    { props: [{ ...props[0], box: { ...props[0].box, x2: .05 } }, ...props.slice(1)] },
+    { props: [{ ...props[0], box: { ...props[0].box, x1: -1 } }, ...props.slice(1)] },
+    { props: [{ ...props[0], box: { ...props[0].box, y1: NaN } }, ...props.slice(1)] },
+    { mood: 'unknown' },
+    { createdAt: 'invalid date' },
+    { photoPath: 'cases/another-case.jpg' },
+    { id: '../other', photoPath: 'cases/../other.jpg' },
+    { photoSource: 'unknown' },
+    { photoName: {} },
+  ]) assert.throws(() => parseSession({ ...savedSession, ...patch }));
 });
 test('accusation requires evidence; free interrogation does not receive the hidden solution', () => {
   const session = { mystery, props, evidence: ['object-1'], messages: {}, discovered: ['object-1'] };

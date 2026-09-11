@@ -3,7 +3,7 @@ import { createNimiLocalAppRuntimeScenarioJobClient } from '@nimiplatform/sdk/ap
 import { runNimiRuntimeScenarioJob } from '@nimiplatform/sdk/runtime';
 import { ExecutionMode, ScenarioType, VisionLocateGeometry } from '@nimiplatform/sdk/runtime/generated';
 import { runRuntimeSpeechSynthesize } from '@nimiplatform/kit/features/generation/runtime';
-import { casePrompt, dialoguePrompt, overlap, parseMystery, propsFromLocate, type Character, type MoodId, type Prop, type Session } from './game.js';
+import { casePrompt, dialoguePrompt, overlap, parseMystery, parseSession, propsFromLocate, type Character, type MoodId, type Prop, type Session } from './game.js';
 import type { JsonValue } from '@nimiplatform/sdk/types';
 
 export const getClient = getNimiLocalAppClient;
@@ -148,9 +148,7 @@ export async function saveSession(session: Session): Promise<void> {
 export async function restoreSession(): Promise<{ session: Session; photo: Photo } | null> {
   const document = await getClient().storage.readJson('current-case.json');
   if (document.value === null) return null;
-  const session = document.value as unknown as Session;
-  if (!session || !Array.isArray(session.props) || !session.photoPath || !Array.isArray(session.evidence) || !Array.isArray(session.discovered) || !session.messages) throw new Error('保存的案卷不完整，可以重新选择照片开案。');
-  parseMystery(JSON.stringify(session.mystery), session.props);
+  const session = parseSession(document.value);
   const asset = await getClient().storage.assets.read({ relativePath: session.photoPath });
   const chunks: Uint8Array<ArrayBuffer>[] = [];
   for await (const chunk of asset.body) chunks.push(new Uint8Array(chunk));

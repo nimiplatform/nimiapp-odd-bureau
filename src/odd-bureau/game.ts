@@ -69,8 +69,9 @@ export function parseMystery(text: string, props: readonly Prop[]): Mystery {
   if (!ids.has(culpritId) || !Array.isArray(value.characters) || value.characters.length !== props.length) throw new Error('案卷中的角色与照片没有对齐，请重新开案。');
   const characters = value.characters.map(entry => {
     const c = object(entry);
+    const objectId = words(c.objectId, 50);
     return {
-      objectId: words(c.objectId, 50), name: props.find(p => p.id === c.objectId)?.label ?? '', persona: words(c.persona, 100),
+      objectId, name: props.find(p => p.id === objectId)?.label ?? '', persona: words(c.persona, 100),
       greeting: words(c.greeting, 180), testimony: words(c.testimony, 400),
       clueTitle: words(c.clueTitle, 35), suggestedQuestion: words(c.suggestedQuestion, 80),
     };
@@ -80,6 +81,54 @@ export function parseMystery(text: string, props: readonly Prop[]): Mystery {
   return {
     title: words(value.title, 45), incident: words(value.incident, 120), opening: words(value.opening, 360),
     culpritId, resolution: words(value.resolution, 900), decisiveEvidenceIds: value.decisiveEvidenceIds as string[], characters,
+  };
+}
+
+/** Validate persisted game data before it reaches consumers that dereference object IDs. */
+export function parseSession(raw: unknown): Session {
+  const invalid = () => new Error('保存的案卷不完整，可以重新选择照片开案。');
+  const value = object(raw);
+  if (!Array.isArray(value.props) || value.props.length < 3 || value.props.length > 6) throw invalid();
+  const props: Prop[] = value.props.map((entry, index) => {
+    const prop = object(entry);
+    if (prop.id !== `object-${index + 1}` || typeof prop.label !== 'string' || !prop.label.trim()) throw invalid();
+    const box = object(prop.box);
+    const { x1, y1, x2, y2 } = box;
+    if (typeof x1 !== 'number' || typeof y1 !== 'number' || typeof x2 !== 'number' || typeof y2 !== 'number'
+      || ![x1, y1, x2, y2].every(n => Number.isFinite(n) && n >= 0 && n <= 1)
+      || x1 >= x2 || y1 >= y2) throw invalid();
+    return { id: prop.id, label: prop.label.trim(), box: { x1, y1, x2, y2 } };
+  });
+  const ids = new Set(props.map(prop => prop.id));
+  if (ids.size !== props.length) throw invalid();
+  function references(rawIds: unknown): string[] {
+    if (!Array.isArray(rawIds) || rawIds.some(id => typeof id !== 'string' || !ids.has(id))
+      || new Set(rawIds).size !== rawIds.length) throw invalid();
+    return rawIds;
+  }
+  const discovered = references(value.discovered);
+  const evidence = references(value.evidence);
+  if (evidence.some(id => !discovered.includes(id))) throw invalid();
+  const messages: Record<string, Message[]> = Object.fromEntries(Object.entries(object(value.messages)).map(([id, entries]) => {
+    if (!ids.has(id) || !discovered.includes(id) || !Array.isArray(entries)) throw invalid();
+    return [id, entries.map(entry => {
+      const message = object(entry);
+      if ((message.who !== 'player' && message.who !== 'object') || typeof message.text !== 'string' || !message.text.trim()) throw invalid();
+      return { who: message.who, text: message.text };
+    })];
+  }));
+  const id = words(value.id, 100);
+  if (!/^[a-zA-Z0-9-]+$/.test(id) || value.photoPath !== `cases/${id}.jpg`
+    || typeof value.createdAt !== 'string' || !Number.isFinite(Date.parse(value.createdAt))
+    || typeof value.photoName !== 'string'
+    || (value.photoSource !== 'sample' && value.photoSource !== 'upload')
+    || !MOODS.some(mood => mood.id === value.mood)
+    || (value.accusation !== null && (typeof value.accusation !== 'string' || !ids.has(value.accusation) || evidence.length < 2))) throw invalid();
+  return {
+    id, mood: value.mood as MoodId, createdAt: value.createdAt, photoPath: value.photoPath,
+    photoName: value.photoName, photoSource: value.photoSource, props,
+    mystery: parseMystery(JSON.stringify(value.mystery), props), discovered, evidence, messages,
+    accusation: value.accusation as string | null,
   };
 }
 
