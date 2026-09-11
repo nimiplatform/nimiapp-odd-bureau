@@ -1,0 +1,682 @@
+{
+  "lockVersion": 4,
+  "scaffoldVersion": "2026-08-31.app-lifecycle-v1",
+  "profile": "standalone",
+  "appId": "nimi.odd-bureau",
+  "appTitle": "奇物局",
+  "version": "0.1.0",
+  "packageName": "@nimiplatform/odd-bureau",
+  "packageAuthor": null,
+  "cargoPackageName": "nimiplatform-odd-bureau-shell",
+  "tauriIdentifier": "ai.nimi.apps.nimi.odd-bureau",
+  "accentPack": "nimi-accent",
+  "appAccessItems": [
+    "runtime.consume"
+  ],
+  "capabilityContractRefs": [
+    "image.generate",
+    "video.generate",
+    "music.generate",
+    "audio.synthesize",
+    "audio.transcribe",
+    "voice.create"
+  ],
+  "requiredStandardizedFeatureRefs": [],
+  "features": [
+    "studio-media",
+    "studio-voice"
+  ],
+  "directFeatures": [
+    "studio-media",
+    "studio-voice"
+  ],
+  "resolvedModules": [
+    "ai-studio-core",
+    "studio-media",
+    "studio-voice"
+  ],
+  "resolvedViews": [
+    "image.generate",
+    "video.generate",
+    "music.generate",
+    "audio.synthesize",
+    "audio.transcribe",
+    "voice.create",
+    "speech.bundle"
+  ],
+  "resolvedNavigation": [
+    "image.generate",
+    "video.generate",
+    "music.generate",
+    "audio.synthesize",
+    "audio.transcribe",
+    "voice.create",
+    "speech.bundle"
+  ],
+  "resolvedStyles": [
+    "src/capabilities/ai-studio-core/ai-studio-core.css"
+  ],
+  "resolvedAssets": [],
+  "hostAdapterContracts": [
+    "ai-studio-host-v1"
+  ],
+  "appIdentity": {
+    "appId": "nimi.odd-bureau",
+    "displayName": "奇物局",
+    "version": "0.1.0",
+    "npmPackageName": "@nimiplatform/odd-bureau",
+    "author": null,
+    "cargoPackageName": "nimiplatform-odd-bureau-shell",
+    "nativeBundleIdentifier": "ai.nimi.apps.nimi.odd-bureau",
+    "tauriIdentifier": "ai.nimi.apps.nimi.odd-bureau",
+    "appSlug": "nimi-odd-bureau",
+    "rendererEntryId": "nimi-odd-bureau-app",
+    "devPort": 1485,
+    "devRendererOrigin": "http://127.0.0.1:1485",
+    "appOwnedNamespace": "nimi.odd-bureau",
+    "targetDir": "D:\\nimi-realm\\nimi-apps\\nimiapp-odd-bureau"
+  },
+  "managedFileTaxonomy": {
+    "packageOwnedProjection": [],
+    "scaffoldManagedGlue": [
+      ".github/workflows/nimi-app-release.yml",
+      ".gitignore",
+      ".nimi/app-scaffold/intent.json",
+      ".nimi/config/app-identity.yaml",
+      ".nimi/contracts/scaffold-boundary.yaml",
+      "index.html",
+      "LICENSE",
+      "nimi.app.yaml",
+      "README.md",
+      "scripts/bundle-electron-preload.mjs",
+      "scripts/clean-electron-production.mjs",
+      "scripts/package-electron-production.mjs",
+      "scripts/validate.mjs",
+      "SECURITY.md",
+      "src-electron/main.ts",
+      "src-electron/preload.cts",
+      "src-tauri/build.rs",
+      "src-tauri/capabilities/default.json",
+      "src-tauri/Cargo.toml",
+      "src-tauri/icons/icon.ico",
+      "src-tauri/icons/icon.png",
+      "src-tauri/src/main.rs",
+      "src-tauri/tauri.conf.json",
+      "src/main.tsx",
+      "src/scaffold/generated/capability-registry.ts",
+      "src/scaffold/generated/host-adapters.tsx",
+      "src/scaffold/generated/i18n.ts",
+      "src/scaffold/generated/module-styles.css",
+      "src/scaffold/generated/navigation.ts",
+      "src/scaffold/generated/route-registry.tsx",
+      "src/scaffold/generated/runtime-registry.ts",
+      "src/shell/App.tsx",
+      "src/shell/auth/app-identity.ts",
+      "src/shell/auth/local-app-client.ts",
+      "src/shell/auth/runtime-platform.ts",
+      "src/shell/authenticated-shell.tsx",
+      "src/shell/workbench-target-adapter.ts",
+      "src/styles.css",
+      "tsconfig.electron.json",
+      "tsconfig.json",
+      "vite.config.ts"
+    ],
+    "appOwnedProductCode": [
+      ".nimi/admission/submission.yaml",
+      ".nimi/config/build-profile.yaml",
+      "AGENTS.md",
+      "package.json",
+      "src/capabilities/ai-studio-core/ai-config.ts",
+      "src/capabilities/ai-studio-core/ai-studio-core.css",
+      "src/capabilities/ai-studio-core/contexts.tsx",
+      "src/capabilities/ai-studio-core/history-policy.ts",
+      "src/capabilities/ai-studio-core/history.ts",
+      "src/capabilities/ai-studio-core/host-context.tsx",
+      "src/capabilities/ai-studio-core/index.ts",
+      "src/capabilities/ai-studio-core/messages/en.json",
+      "src/capabilities/ai-studio-core/messages/index.ts",
+      "src/capabilities/ai-studio-core/messages/zh.json",
+      "src/capabilities/ai-studio-core/module-registration.ts",
+      "src/capabilities/ai-studio-core/non-success-presentation.ts",
+      "src/capabilities/ai-studio-core/parameter-fields.tsx",
+      "src/capabilities/ai-studio-core/parameters.ts",
+      "src/capabilities/ai-studio-core/prompt-drafts.ts",
+      "src/capabilities/ai-studio-core/run-target.ts",
+      "src/capabilities/ai-studio-core/runtime-dispatcher.ts",
+      "src/capabilities/ai-studio-core/runtime-types.ts",
+      "src/capabilities/ai-studio-core/runtime.ts",
+      "src/capabilities/ai-studio-core/section-ai-testing-admission.ts",
+      "src/capabilities/ai-studio-core/section-ai-testing-ai-config.tsx",
+      "src/capabilities/ai-studio-core/section-ai-testing-artifact-preview.ts",
+      "src/capabilities/ai-studio-core/section-ai-testing-composer.tsx",
+      "src/capabilities/ai-studio-core/section-ai-testing-history.tsx",
+      "src/capabilities/ai-studio-core/section-ai-testing-input.ts",
+      "src/capabilities/ai-studio-core/section-ai-testing-output.tsx",
+      "src/capabilities/ai-studio-core/section-ai-testing-result.tsx",
+      "src/capabilities/ai-studio-core/section-ai-testing-run.ts",
+      "src/capabilities/ai-studio-core/section-ai-testing-studio-result.tsx",
+      "src/capabilities/ai-studio-core/section-ai-testing-surface.tsx",
+      "src/capabilities/ai-studio-core/section-ai-testing-vision-input.tsx",
+      "src/capabilities/ai-studio-core/section-ai-testing-vision-result.tsx",
+      "src/capabilities/ai-studio-core/section-ai-testing.tsx",
+      "src/capabilities/ai-studio-core/studio-directives.ts",
+      "src/capabilities/ai-studio-core/workspace.tsx",
+      "src/capabilities/studio-media/descriptors.ts",
+      "src/capabilities/studio-media/index.ts",
+      "src/capabilities/studio-media/messages/en.json",
+      "src/capabilities/studio-media/messages/index.ts",
+      "src/capabilities/studio-media/messages/zh.json",
+      "src/capabilities/studio-media/parameter-panel.tsx",
+      "src/capabilities/studio-media/parameters.ts",
+      "src/capabilities/studio-media/registration.ts",
+      "src/capabilities/studio-media/runtime.ts",
+      "src/capabilities/studio-media/vision-parameters.tsx",
+      "src/capabilities/studio-media/vision-runtime.ts",
+      "src/capabilities/studio-voice/descriptors.ts",
+      "src/capabilities/studio-voice/index.ts",
+      "src/capabilities/studio-voice/messages/en.json",
+      "src/capabilities/studio-voice/messages/index.ts",
+      "src/capabilities/studio-voice/messages/zh.json",
+      "src/capabilities/studio-voice/parameter-panel.tsx",
+      "src/capabilities/studio-voice/parameters.ts",
+      "src/capabilities/studio-voice/registration.ts",
+      "src/capabilities/studio-voice/runtime.ts",
+      "src/shell/routes/product-area.tsx",
+      "src/workbench-core/empty-state.tsx",
+      "src/workbench-core/index.ts",
+      "src/workbench-core/runtime-gate.tsx",
+      "src/workbench-core/workbench-core.css",
+      "src/workbench-core/workbench-core.tsx"
+    ]
+  },
+  "managedFileHashes": {
+    ".gitignore": {
+      "class": "scaffold-managed glue",
+      "sha256": "488d42ed67741bc8ce3418a92ad32d81e836f0031d1f2b8bb277c96eb5f8475c"
+    },
+    ".github/workflows/nimi-app-release.yml": {
+      "class": "scaffold-managed glue",
+      "sha256": "da3e42d98b16acd3a3dffdf6a934512e67b8ea1453ec1a51fd2d3dbdbf59fe12"
+    },
+    "nimi.app.yaml": {
+      "class": "scaffold-managed glue",
+      "sha256": "2c365952ebc1c8c504807a28c98e7132c925adf168fafdd465881d5d96f833a6"
+    },
+    ".nimi/config/app-identity.yaml": {
+      "class": "scaffold-managed glue",
+      "sha256": "85d829e0e7cdebb72f39600c8f03e664878b4253eb6d702bf93ac1f31e7f11f1"
+    },
+    ".nimi/contracts/scaffold-boundary.yaml": {
+      "class": "scaffold-managed glue",
+      "sha256": "791e3719905557f67cae2753076f4e614627472f9f90d3466683d8f322c85212"
+    },
+    "src-tauri/icons/icon.png": {
+      "class": "scaffold-managed glue",
+      "sha256": "43739c566e26fd7cb88f69d3864ea34740372f5ee99acac169e090beffbce5c6"
+    },
+    "src-tauri/icons/icon.ico": {
+      "class": "scaffold-managed glue",
+      "sha256": "9584f927e7d8bee03f040cb791371cfac4c96e500759721fa6eafdf2fc3c4ff0"
+    },
+    "index.html": {
+      "class": "scaffold-managed glue",
+      "sha256": "d01ca49acd997c09d26a8f52a4300079543c1478262440bc99870daf782c7f31"
+    },
+    "LICENSE": {
+      "class": "scaffold-managed glue",
+      "sha256": "5830b56c92e055435c7eee5796fe5ba80645debe4d456dc070ef24f8697ab0c4"
+    },
+    "README.md": {
+      "class": "scaffold-managed glue",
+      "sha256": "fb75b2ca5b68097de2d24ba29b48471a091e0b08d011dd61e8f47d6c276c35e5"
+    },
+    "scripts/validate.mjs": {
+      "class": "scaffold-managed glue",
+      "sha256": "b4f055b1fe7417e1931b12bf89d84e12acdf5c36fe4f901e2073ac8ccf5b332e"
+    },
+    "SECURITY.md": {
+      "class": "scaffold-managed glue",
+      "sha256": "64625407129fa4264fd29d4eae0a78bdf0acb9bae782713a094a55e88653f5e6"
+    },
+    "src-tauri/build.rs": {
+      "class": "scaffold-managed glue",
+      "sha256": "e8d4074292d979c3a25c4133af19cfa3a2b47116e1d63bb6e3dbf789f2e3266f"
+    },
+    "src-tauri/capabilities/default.json": {
+      "class": "scaffold-managed glue",
+      "sha256": "4c80a5329c0b53ffa1a7cbe380b9da27b4b65211f29feddba4e40a78a412ee82"
+    },
+    "src-tauri/Cargo.toml": {
+      "class": "scaffold-managed glue",
+      "sha256": "953422234d22871cd2bdabaea06bba3757c22f4e66b13a8a777433efd4a1e451"
+    },
+    "src-tauri/tauri.conf.json": {
+      "class": "scaffold-managed glue",
+      "sha256": "75a2cbf5e74fc3c69081e96a610ee7fbfc071b8f9ace980b341964ce20820e1b"
+    },
+    "src/shell/App.tsx": {
+      "class": "scaffold-managed glue",
+      "sha256": "9c6ef33da01d4c3b10c9a06da6bdb05f3632ed3d976db914997ac98267e4a685"
+    },
+    "src/shell/auth/app-identity.ts": {
+      "class": "scaffold-managed glue",
+      "sha256": "027a8349c806a74995951bc06432119b414ce2d65824ed92d162ea4abc367898"
+    },
+    "src/shell/auth/local-app-client.ts": {
+      "class": "scaffold-managed glue",
+      "sha256": "c2b56899e325a946ab530104c1dd2baefb2c76d298e0f4312935ac837c0d4a4f"
+    },
+    "src/shell/auth/runtime-platform.ts": {
+      "class": "scaffold-managed glue",
+      "sha256": "92b0eacf70c7383f1972f4485504c80a0ef5a7a2cf09130365c77e68600276b4"
+    },
+    "src/shell/authenticated-shell.tsx": {
+      "class": "scaffold-managed glue",
+      "sha256": "a47711544e200493999e8217c3a6cbffc77e7723f2eb2401b778939f9cfbc8ba"
+    },
+    "src/shell/workbench-target-adapter.ts": {
+      "class": "scaffold-managed glue",
+      "sha256": "03b242ce3ac99411ffb4ec6d92dd49777f1f25e8d505d0ba9e212aa37e88a3f1"
+    },
+    "src/styles.css": {
+      "class": "scaffold-managed glue",
+      "sha256": "65b798c49b2db9073aa49b60131c430039c51357a50a557f23c1fadeb7fa20a8"
+    },
+    "tsconfig.json": {
+      "class": "scaffold-managed glue",
+      "sha256": "001bc1bd9091d0782fd00cf65b944a6ffefc9017b4deb34bc322056c83ddc82b"
+    },
+    "src/main.tsx": {
+      "class": "scaffold-managed glue",
+      "sha256": "8c7e585519098864182189563fa35514f5339cd9efa90245e6ae0281aa6dfb50"
+    },
+    "src/scaffold/generated/capability-registry.ts": {
+      "class": "scaffold-managed glue",
+      "sha256": "e962f3ebc1003a48e6847db2923c3b959321eee82d39fc09269c6b31a646a112"
+    },
+    "src/scaffold/generated/runtime-registry.ts": {
+      "class": "scaffold-managed glue",
+      "sha256": "a7dbc9511729a1593c18a15e19501f9137b3301d1e0ad37571e50bd8ae743d0c"
+    },
+    "src/scaffold/generated/navigation.ts": {
+      "class": "scaffold-managed glue",
+      "sha256": "a699daaeff34fd9d94ec9b3fdc1593a04f02991e66f6fd11988bf6b6984590d9"
+    },
+    "src/scaffold/generated/route-registry.tsx": {
+      "class": "scaffold-managed glue",
+      "sha256": "b70b1c3681bfaa29d16a716039d810bd06e17e9f00e9dacd2f55bdaa8ce7887c"
+    },
+    "src/scaffold/generated/module-styles.css": {
+      "class": "scaffold-managed glue",
+      "sha256": "d01a8fe3e7c7cc8966ec430950049564c56ef8dd47426c0299e1536476ed50a6"
+    },
+    "src/scaffold/generated/i18n.ts": {
+      "class": "scaffold-managed glue",
+      "sha256": "a7bf99868825fc2609230237f7efd14737574ce563c89682b03f0d9179d1103a"
+    },
+    "src/scaffold/generated/host-adapters.tsx": {
+      "class": "scaffold-managed glue",
+      "sha256": "9ec337da0e6ddc86484639f03891690f51fa34dbce5e45825ddcd0baeca2e062"
+    },
+    "src-tauri/src/main.rs": {
+      "class": "scaffold-managed glue",
+      "sha256": "fe2fe993cd7836edfaa05ad103d2aa1c5093d2ffafb1624b757097fefc599769"
+    },
+    "src-electron/main.ts": {
+      "class": "scaffold-managed glue",
+      "sha256": "961bfd77edf698d861cc9612e03b177b00c76e73378036db9b4877b26bc2920b"
+    },
+    "src-electron/preload.cts": {
+      "class": "scaffold-managed glue",
+      "sha256": "6260e14a9d9de6a4deb76000d2d6df8876df2d8dbf74be53e330ff4490a47a31"
+    },
+    "scripts/bundle-electron-preload.mjs": {
+      "class": "scaffold-managed glue",
+      "sha256": "17a572745ebc37f31553d9c7ff30a4c9b4ff1518224478e737383b6ab6a1b676"
+    },
+    "scripts/clean-electron-production.mjs": {
+      "class": "scaffold-managed glue",
+      "sha256": "6cf3e4863556f8b9937cc5b6f4107177f32c397556f9a734e3a0d6eeb78e85b3"
+    },
+    "scripts/package-electron-production.mjs": {
+      "class": "scaffold-managed glue",
+      "sha256": "fa0084c370b4022ec9d10ab6a474adc6c2c197a72ec240eecfaa50c3e7b7ac89"
+    },
+    "tsconfig.electron.json": {
+      "class": "scaffold-managed glue",
+      "sha256": "60eb414dd4dc309ace5f76245fb8b05e673f08a970d2fb825e595cc16ff862dc"
+    },
+    "vite.config.ts": {
+      "class": "scaffold-managed glue",
+      "sha256": "cd1d24a0934bea898caaef3e8a9c8fa836e84b9d4e5f48ca531800d942e3c41b"
+    },
+    ".nimi/app-scaffold/intent.json": {
+      "class": "scaffold-managed glue",
+      "sha256": "367a74d20c28c9d0465563f533d8e7c00923a02e141ff016787ced1bf6ab6ff6"
+    }
+  },
+  "appOwnedInitialHashes": {
+    "package.json": {
+      "class": "app-owned product code",
+      "sha256": "04ce519c955b02767ea7c126ec7349595482c5243e924924d24a23ed59350edb"
+    },
+    ".nimi/config/build-profile.yaml": {
+      "class": "app-owned product code",
+      "sha256": "885fc032596297b31f292fc065ca177ddbb4783de51a8a2abdace62c09ba610e"
+    },
+    ".nimi/admission/submission.yaml": {
+      "class": "app-owned product code",
+      "sha256": "ff7cc892d405fd19d2f216f184b52216b2948c35a794456f5106f2009d1da6ae"
+    },
+    "AGENTS.md": {
+      "class": "app-owned product code",
+      "sha256": "eb9b46657e405190d429d04f682da99703e87dc4cfcbb3bc4c64da434e98936f"
+    },
+    "src/shell/routes/product-area.tsx": {
+      "class": "app-owned product code",
+      "sha256": "c7cb56d904708f9ac90dd4d021cae07a4db533dee2dcd0b1900d53f9bbb4d50c"
+    },
+    "src/workbench-core/empty-state.tsx": {
+      "class": "app-owned product code",
+      "sha256": "5c582911cecd535711541a4a44a24333fd07f22d26775dc193e69aa4ae2438ca"
+    },
+    "src/workbench-core/index.ts": {
+      "class": "app-owned product code",
+      "sha256": "28a41e7d7fe20a779785127df032c48d36de28b3974001671ee733556d0c3b83"
+    },
+    "src/workbench-core/runtime-gate.tsx": {
+      "class": "app-owned product code",
+      "sha256": "bf41aec8fea4f371c73486eafc3fe991dc16be9e4cf81da11ca38bd47dc9c906"
+    },
+    "src/workbench-core/workbench-core.css": {
+      "class": "app-owned product code",
+      "sha256": "18024ea10721646fac342aea3d43118fe4e54c4e34d07745ff9f416b74e0cf8d"
+    },
+    "src/workbench-core/workbench-core.tsx": {
+      "class": "app-owned product code",
+      "sha256": "92208dda356739fbbd983fdc3574f7d64b3ba4e72241de3261745b2643626806"
+    },
+    "src/capabilities/ai-studio-core/ai-config.ts": {
+      "class": "app-owned product code",
+      "sha256": "9de836cb5a2e91f691a98c1db2ccb88170d73e51701e7687900c6b6cfb65d2cd"
+    },
+    "src/capabilities/ai-studio-core/ai-studio-core.css": {
+      "class": "app-owned product code",
+      "sha256": "26e7afd334210fd872a308b9943138a36556100395a62ec8487a71f1c81f5661"
+    },
+    "src/capabilities/ai-studio-core/contexts.tsx": {
+      "class": "app-owned product code",
+      "sha256": "7ad8fa16d4db8edecd5ae65091bb948fb7de8926ac5da02adfc3d2ae4cf57f6a"
+    },
+    "src/capabilities/ai-studio-core/history-policy.ts": {
+      "class": "app-owned product code",
+      "sha256": "03a5e44dbad31706aa7b53456861af2b328c92448e42601a0ce41045df234f24"
+    },
+    "src/capabilities/ai-studio-core/history.ts": {
+      "class": "app-owned product code",
+      "sha256": "6fb4e026b842d12e86846e2317455114356864d9cf7c9d92f328ed02269c6d24"
+    },
+    "src/capabilities/ai-studio-core/host-context.tsx": {
+      "class": "app-owned product code",
+      "sha256": "32ed1280a1d8d76727370dedbbee38948ccd73a399ba3932f98acc42b1e221e4"
+    },
+    "src/capabilities/ai-studio-core/index.ts": {
+      "class": "app-owned product code",
+      "sha256": "ce4ef3c8b271e4f2f8665049557a4c54c75df3903f7ab9ea2285361b85646553"
+    },
+    "src/capabilities/ai-studio-core/messages/en.json": {
+      "class": "app-owned product code",
+      "sha256": "e67d1f1f88ccbbb77685d3df9beb962ac2721a63cb780f9adbf8a99f2736d368"
+    },
+    "src/capabilities/ai-studio-core/messages/index.ts": {
+      "class": "app-owned product code",
+      "sha256": "7dfb5d12d65e8d1287d453f3e246f1de50065959e259a37a1e79360c93277642"
+    },
+    "src/capabilities/ai-studio-core/messages/zh.json": {
+      "class": "app-owned product code",
+      "sha256": "a3cc18e698adafcc712fdaff86ed151f40b70c96ea7d3fc489580af07f7730cc"
+    },
+    "src/capabilities/ai-studio-core/module-registration.ts": {
+      "class": "app-owned product code",
+      "sha256": "b735002beecda1b888b2936a661035d4dfc595670a1c55562b005f74979f4230"
+    },
+    "src/capabilities/ai-studio-core/non-success-presentation.ts": {
+      "class": "app-owned product code",
+      "sha256": "29c17b584c02e22f9f36280e8234c2de56bfda11e91c2bb9b362dc38c9f7fe1a"
+    },
+    "src/capabilities/ai-studio-core/parameter-fields.tsx": {
+      "class": "app-owned product code",
+      "sha256": "9e180b18344f1bdba3c960796e4bcd57cf0abe51ce468c47961cbba08e4a4c2a"
+    },
+    "src/capabilities/ai-studio-core/parameters.ts": {
+      "class": "app-owned product code",
+      "sha256": "0d84a6e29b184c0563e47231fb21eb4dff71e0889a709595abd2e709a3e6d30b"
+    },
+    "src/capabilities/ai-studio-core/prompt-drafts.ts": {
+      "class": "app-owned product code",
+      "sha256": "893bf5ab4d8c7f9ecf669395f122435b4d500f78478c0d6f6daf6553cd9b51ee"
+    },
+    "src/capabilities/ai-studio-core/run-target.ts": {
+      "class": "app-owned product code",
+      "sha256": "2570464228f3dae30c5afd660ad3d4915eb22f87df6b40f918a359ba907fd1ba"
+    },
+    "src/capabilities/ai-studio-core/runtime-dispatcher.ts": {
+      "class": "app-owned product code",
+      "sha256": "6ef3e99b0b58351041e564dfe8c810b905d3b33b933cbb853671967c087eb2e2"
+    },
+    "src/capabilities/ai-studio-core/runtime-types.ts": {
+      "class": "app-owned product code",
+      "sha256": "fc86f7a8ad015e5baf154b0b8f47b141c4b8ebb2713e870961f8bce5667aa8e2"
+    },
+    "src/capabilities/ai-studio-core/runtime.ts": {
+      "class": "app-owned product code",
+      "sha256": "052929dc45f8f5b974d55965eebe4c4dfa9a1115624e8f4f33379b560bfc1d9f"
+    },
+    "src/capabilities/ai-studio-core/section-ai-testing-admission.ts": {
+      "class": "app-owned product code",
+      "sha256": "c58b12d83632d45f95a03b6f58f7d7b5d760281cfd8fd7673faa44f591a2a271"
+    },
+    "src/capabilities/ai-studio-core/section-ai-testing-ai-config.tsx": {
+      "class": "app-owned product code",
+      "sha256": "84ad14869c16602f2070839395b6e169fdfb9a7c7ea05fb33788e56a637a80a9"
+    },
+    "src/capabilities/ai-studio-core/section-ai-testing-artifact-preview.ts": {
+      "class": "app-owned product code",
+      "sha256": "48b76f79a36c54bdf15a011e75e39a6ef11c08f193d262b39d30a470b986c2b9"
+    },
+    "src/capabilities/ai-studio-core/section-ai-testing-composer.tsx": {
+      "class": "app-owned product code",
+      "sha256": "cf0278c936f20fe9a882061bde73cd1e61d70967517550bb5f9b90d2049d6f5e"
+    },
+    "src/capabilities/ai-studio-core/section-ai-testing-history.tsx": {
+      "class": "app-owned product code",
+      "sha256": "0a18923ac04a6c0da9bff1b0c01dd7f3eee7c8ed31909e1f050a19b4be9b1eb1"
+    },
+    "src/capabilities/ai-studio-core/section-ai-testing-input.ts": {
+      "class": "app-owned product code",
+      "sha256": "27a3d2d90e7b66b16be84a3795eab713a1b139e217ee19ea931507b69f12c103"
+    },
+    "src/capabilities/ai-studio-core/section-ai-testing-output.tsx": {
+      "class": "app-owned product code",
+      "sha256": "701d2f3f747b6f2c263751a8152df873cc1541b335d394509bdc365afd14c1b2"
+    },
+    "src/capabilities/ai-studio-core/section-ai-testing-result.tsx": {
+      "class": "app-owned product code",
+      "sha256": "0b6fc3731d586a594594011732afe89cb612f976a100f75ab02ee75b391f7d9c"
+    },
+    "src/capabilities/ai-studio-core/section-ai-testing-run.ts": {
+      "class": "app-owned product code",
+      "sha256": "7c032fb4f4e690d5473b8432d10f0fe43c7f8ec1cfa9f0a5cc3af2699eca129c"
+    },
+    "src/capabilities/ai-studio-core/section-ai-testing-studio-result.tsx": {
+      "class": "app-owned product code",
+      "sha256": "c7316d9be0aedb0feadf0a515fb55bb68e0aa688164de16603be85323e3ddd70"
+    },
+    "src/capabilities/ai-studio-core/section-ai-testing-surface.tsx": {
+      "class": "app-owned product code",
+      "sha256": "d2dc9c0489bf36e8b6e4be9976e75c8c85a5435cbeee0f707bb428734b2a7c4e"
+    },
+    "src/capabilities/ai-studio-core/section-ai-testing-vision-input.tsx": {
+      "class": "app-owned product code",
+      "sha256": "8fa6406e8a82d6c06df94e422d5e74c4687be5f791eecbfc76e7bdf72641f257"
+    },
+    "src/capabilities/ai-studio-core/section-ai-testing-vision-result.tsx": {
+      "class": "app-owned product code",
+      "sha256": "2d96a5727a195639ff4153bd5c61c82d96ffb328d9b546226c0f502a3bb34658"
+    },
+    "src/capabilities/ai-studio-core/section-ai-testing.tsx": {
+      "class": "app-owned product code",
+      "sha256": "1e093b749b8919e5989762439662650664bf2ca4d45276e0d498d1701a808db7"
+    },
+    "src/capabilities/ai-studio-core/studio-directives.ts": {
+      "class": "app-owned product code",
+      "sha256": "dfadca8d69789d3d762c939137068e0d046d4f324de9f52362f2ace1474b847d"
+    },
+    "src/capabilities/ai-studio-core/workspace.tsx": {
+      "class": "app-owned product code",
+      "sha256": "4aef17c6c0883715e8e1f2320994d3261ed235172dda4892bc5ca4da793eba29"
+    },
+    "src/capabilities/studio-media/descriptors.ts": {
+      "class": "app-owned product code",
+      "sha256": "3d0bd1f732e758b2859c68125072a36d81e41358108b79ff29fb0358225b5af7"
+    },
+    "src/capabilities/studio-media/index.ts": {
+      "class": "app-owned product code",
+      "sha256": "d6fa96865615216edb469ac5911d2c50307a00f132f7cddda18348ec1c39b07f"
+    },
+    "src/capabilities/studio-media/messages/en.json": {
+      "class": "app-owned product code",
+      "sha256": "434e00f8d63421ff5bc404d0f778ad3287b73b6db16c42f1368afcae3378bdb6"
+    },
+    "src/capabilities/studio-media/messages/index.ts": {
+      "class": "app-owned product code",
+      "sha256": "1567ec452404a2718b33daab0e8c9482713c433b5333edc7915f40e526345df1"
+    },
+    "src/capabilities/studio-media/messages/zh.json": {
+      "class": "app-owned product code",
+      "sha256": "4b21f3c17399f9f86a3d7034afac619e6b73c09376a7d8703f2958abed1509da"
+    },
+    "src/capabilities/studio-media/parameter-panel.tsx": {
+      "class": "app-owned product code",
+      "sha256": "68f8109a416b0c82169c2e7baba6d5c89cd7fd4b573f4e3380c142e5cf0d97d3"
+    },
+    "src/capabilities/studio-media/parameters.ts": {
+      "class": "app-owned product code",
+      "sha256": "955df65452ed83cae1463728e017927568686c6135530e0564b4ebdb73562671"
+    },
+    "src/capabilities/studio-media/registration.ts": {
+      "class": "app-owned product code",
+      "sha256": "9e0abe6bad60087b62d6d09bcd2a8b6e4bae3951e718e831c40f7ea8c0efdd14"
+    },
+    "src/capabilities/studio-media/runtime.ts": {
+      "class": "app-owned product code",
+      "sha256": "db2baf07526076f22123581fbdc153147f86288428ca1a97b568d93dacc2dc4a"
+    },
+    "src/capabilities/studio-media/vision-parameters.tsx": {
+      "class": "app-owned product code",
+      "sha256": "9ab976b51758ef91846162bfdbe6e0401d4256218b9a411475a96cd198a8f827"
+    },
+    "src/capabilities/studio-media/vision-runtime.ts": {
+      "class": "app-owned product code",
+      "sha256": "85813466d9a717b187b98ad8807a8b8bb0221a30c1edb186586950595efd34c0"
+    },
+    "src/capabilities/studio-voice/descriptors.ts": {
+      "class": "app-owned product code",
+      "sha256": "db91a2c473784516d9e25248a720ed69704a57abe1c08b09c1cb01b4e866f556"
+    },
+    "src/capabilities/studio-voice/index.ts": {
+      "class": "app-owned product code",
+      "sha256": "edc2110f1c23c4dc5ccd63035cb979c5ffbe9533ae6e87aa44740946eb460836"
+    },
+    "src/capabilities/studio-voice/messages/en.json": {
+      "class": "app-owned product code",
+      "sha256": "bae4f792b656736a4eee588b6b3ca0f1e430e10eef18a1f0e94cf127fcbd7ef9"
+    },
+    "src/capabilities/studio-voice/messages/index.ts": {
+      "class": "app-owned product code",
+      "sha256": "e6a3ac73320ae00928d18cfcc504573cabef313ca96a303fc9cce9b7c2f883e2"
+    },
+    "src/capabilities/studio-voice/messages/zh.json": {
+      "class": "app-owned product code",
+      "sha256": "2d799d49905c2279a4392db259a2c28796800e346ec3ede677bc1f0046059b93"
+    },
+    "src/capabilities/studio-voice/parameter-panel.tsx": {
+      "class": "app-owned product code",
+      "sha256": "c3754bda0eae79a65ab8bb902a3f0b1e442b10138075e5b91272343a3396e063"
+    },
+    "src/capabilities/studio-voice/parameters.ts": {
+      "class": "app-owned product code",
+      "sha256": "a5464871eab0591a4cfd60f743d4690d903279a5be16afdb9fe69b163bb811f8"
+    },
+    "src/capabilities/studio-voice/registration.ts": {
+      "class": "app-owned product code",
+      "sha256": "4da6c7511141507986baba7e7e863fce450b40b57c82b35131c20e9d953047e2"
+    },
+    "src/capabilities/studio-voice/runtime.ts": {
+      "class": "app-owned product code",
+      "sha256": "3fe1553c159a99f5d63924df6bf4e6f1e37557459e58fb7ae9e590b5cb614ad2"
+    }
+  },
+  "dependencyMatrix": {
+    "npm": {
+      "@nimiplatform/app-tools": "^0.4.0",
+      "@nimiplatform/nimi-coding": "0.6.2",
+      "@nimiplatform/sdk": "^0.10.0",
+      "@nimiplatform/kit": "^0.6.0",
+      "react": "^19.2.8",
+      "react-dom": "^19.2.8",
+      "i18next": "^25.10.10",
+      "lucide-react": "^0.577.0",
+      "typescript": "^5.9.3",
+      "vite": "^7.3.6",
+      "tailwindcss": "^4.3.3",
+      "@tauri-apps/cli": "^2.11.4",
+      "@tailwindcss/vite": "^4.3.3",
+      "@vitejs/plugin-react": "^5.2.0",
+      "@electron/packager": "^20.3.0",
+      "electron": "^42.10.1",
+      "esbuild": "^0.28.2",
+      "yaml": "^2.9.0"
+    },
+    "cargo": {
+      "nimi-shell-tauri": "0.2.1",
+      "tauri": {
+        "version": "2",
+        "features": []
+      },
+      "serde": {
+        "version": "1",
+        "features": [
+          "derive"
+        ]
+      },
+      "serde_json": "1",
+      "url": "2",
+      "base64": "0.22",
+      "dirs": "6",
+      "time": "=0.3.47",
+      "tauri-build": {
+        "version": "2",
+        "features": []
+      }
+    },
+    "toolchain": {
+      "node": ">=24",
+      "pnpm": "10.34.5",
+      "rust": ">=1.80",
+      "tauri": "2"
+    }
+  },
+  "semantics": {
+    "initRole": "developer-scaffold-initialization-after-install",
+    "nimicodingProjectionOwner": "@nimiplatform/nimi-coding",
+    "nimicodingApplyCommand": "pnpm exec nimicoding sync --apply --json",
+    "nimicodingCheckCommand": "pnpm exec nimicoding sync --check --json",
+    "syncAndCheckRole": "developer-scaffold-maintenance-only",
+    "lockfilePolicy": "author-install-generates-lockfile",
+    "ignoredVerificationArtifacts": [
+      "dist/"
+    ],
+    "capabilityComposition": "base-plus-selected-dependency-closure"
+  }
+}

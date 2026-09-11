@@ -1,0 +1,25 @@
+app_id: nimi.odd-bureau
+display_name: 奇物局
+version: 0.1.0
+profile: standalone
+manifest_role: submitted-input
+app_access:
+  - runtime.consume
+capability_contract_refs:
+  - image.generate
+  - video.generate
+  - music.generate
+  - audio.synthesize
+  - audio.transcribe
+  - voice.create
+required_standardized_feature_refs: []
+storage_policy:
+  kind: nimi-mediated-default
+metadata:
+  summary: ""
+  icon: assets/app-icon.png
+  readme: README.md
+  release_notes: RELEASE_NOTES.md
+local_development:
+  electron:
+    renderer_origin: http://127.0.0.1:1485

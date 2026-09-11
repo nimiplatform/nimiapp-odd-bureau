@@ -1,0 +1,335 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-11T16:48:54.303Z",
+  "title": "Design System: 奇物局 — App composition",
+  "extensions": {
+    "colorMeta": {
+      "cabinet": {
+        "role": "tertiary",
+        "displayName": "Matte cabinet violet",
+        "tonalRamp": [
+          "oklch(15.00% 0.1962 280.55)",
+          "oklch(26.43% 0.1962 280.55)",
+          "oklch(37.86% 0.1962 280.55)",
+          "oklch(49.29% 0.1962 280.55)",
+          "oklch(60.71% 0.1962 280.55)",
+          "oklch(72.14% 0.1962 280.55)",
+          "oklch(83.57% 0.1962 280.55)",
+          "oklch(95.00% 0.1962 280.55)"
+        ]
+      },
+      "cabinet-dark": {
+        "role": "tertiary",
+        "displayName": "Deep cabinet violet",
+        "tonalRamp": [
+          "oklch(15.00% 0.1662 280.18)",
+          "oklch(26.43% 0.1662 280.18)",
+          "oklch(37.86% 0.1662 280.18)",
+          "oklch(49.29% 0.1662 280.18)",
+          "oklch(60.71% 0.1662 280.18)",
+          "oklch(72.14% 0.1662 280.18)",
+          "oklch(83.57% 0.1662 280.18)",
+          "oklch(95.00% 0.1662 280.18)"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Investigation lavender",
+        "tonalRamp": [
+          "oklch(15.00% 0.0242 293.59)",
+          "oklch(26.43% 0.0242 293.59)",
+          "oklch(37.86% 0.0242 293.59)",
+          "oklch(49.29% 0.0242 293.59)",
+          "oklch(60.71% 0.0242 293.59)",
+          "oklch(72.14% 0.0242 293.59)",
+          "oklch(83.57% 0.0242 293.59)",
+          "oklch(95.00% 0.0242 293.59)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Deep plum ink",
+        "tonalRamp": [
+          "oklch(15.00% 0.0669 292.64)",
+          "oklch(26.43% 0.0669 292.64)",
+          "oklch(37.86% 0.0669 292.64)",
+          "oklch(49.29% 0.0669 292.64)",
+          "oklch(60.71% 0.0669 292.64)",
+          "oklch(72.14% 0.0669 292.64)",
+          "oklch(83.57% 0.0669 292.64)",
+          "oklch(95.00% 0.0669 292.64)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted plum",
+        "tonalRamp": [
+          "oklch(15.00% 0.0647 298.90)",
+          "oklch(26.43% 0.0647 298.90)",
+          "oklch(37.86% 0.0647 298.90)",
+          "oklch(49.29% 0.0647 298.90)",
+          "oklch(60.71% 0.0647 298.90)",
+          "oklch(72.14% 0.0647 298.90)",
+          "oklch(83.57% 0.0647 298.90)",
+          "oklch(95.00% 0.0647 298.90)"
+        ]
+      },
+      "mint": {
+        "role": "secondary",
+        "displayName": "Discovery mint",
+        "tonalRamp": [
+          "oklch(15.00% 0.1130 133.47)",
+          "oklch(26.43% 0.1130 133.47)",
+          "oklch(37.86% 0.1130 133.47)",
+          "oklch(49.29% 0.1130 133.47)",
+          "oklch(60.71% 0.1130 133.47)",
+          "oklch(72.14% 0.1130 133.47)",
+          "oklch(83.57% 0.1130 133.47)",
+          "oklch(95.00% 0.1130 133.47)"
+        ]
+      },
+      "coral": {
+        "role": "primary",
+        "displayName": "Coral key",
+        "tonalRamp": [
+          "oklch(15.00% 0.1335 32.56)",
+          "oklch(26.43% 0.1335 32.56)",
+          "oklch(37.86% 0.1335 32.56)",
+          "oklch(49.29% 0.1335 32.56)",
+          "oklch(60.71% 0.1335 32.56)",
+          "oklch(72.14% 0.1335 32.56)",
+          "oklch(83.57% 0.1335 32.56)",
+          "oklch(95.00% 0.1335 32.56)"
+        ]
+      },
+      "coral-hover": {
+        "role": "primary",
+        "displayName": "Warm coral hover",
+        "tonalRamp": [
+          "oklch(15.00% 0.1040 34.67)",
+          "oklch(26.43% 0.1040 34.67)",
+          "oklch(37.86% 0.1040 34.67)",
+          "oklch(49.29% 0.1040 34.67)",
+          "oklch(60.71% 0.1040 34.67)",
+          "oklch(72.14% 0.1040 34.67)",
+          "oklch(83.57% 0.1040 34.67)",
+          "oklch(95.00% 0.1040 34.67)"
+        ]
+      },
+      "lavender-hover": {
+        "role": "neutral",
+        "displayName": "Soft lavender hover",
+        "tonalRamp": [
+          "oklch(15.00% 0.0328 295.29)",
+          "oklch(26.43% 0.0328 295.29)",
+          "oklch(37.86% 0.0328 295.29)",
+          "oklch(49.29% 0.0328 295.29)",
+          "oklch(60.71% 0.0328 295.29)",
+          "oklch(72.14% 0.0328 295.29)",
+          "oklch(83.57% 0.0328 295.29)",
+          "oklch(95.00% 0.0328 295.29)"
+        ]
+      },
+      "panel-band": {
+        "role": "neutral",
+        "displayName": "Lavender panel band",
+        "tonalRamp": [
+          "oklch(15.00% 0.0358 298.00)",
+          "oklch(26.43% 0.0358 298.00)",
+          "oklch(37.86% 0.0358 298.00)",
+          "oklch(49.29% 0.0358 298.00)",
+          "oklch(60.71% 0.0358 298.00)",
+          "oklch(72.14% 0.0358 298.00)",
+          "oklch(83.57% 0.0358 298.00)",
+          "oklch(95.00% 0.0358 298.00)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Landing display",
+        "purpose": "Playful opening headline; responsive values are recorded in DESIGN.md."
+      },
+      "headline": {
+        "displayName": "Case headline",
+        "purpose": "The active case title."
+      },
+      "title": {
+        "displayName": "Investigation title",
+        "purpose": "Opening invitation title; other game titles use local variants."
+      },
+      "body": {
+        "displayName": "Chinese system body",
+        "purpose": "Reading and control text; the setup heading also uses this family."
+      },
+      "dialogue": {
+        "displayName": "Object conversation",
+        "purpose": "Desktop message text; increases to 14px at 850px and below."
+      }
+    },
+    "shadows": [
+      {
+        "name": "cabinet",
+        "value": "0 16px 38px #25186638",
+        "purpose": "Ambient separation beneath the joined cabinet."
+      },
+      {
+        "name": "object-focus-contrast",
+        "value": "0 0 0 7px #292045",
+        "purpose": "Dark contrast layer behind a focused photo marker."
+      }
+    ],
+    "motion": [
+      {
+        "name": "control-color",
+        "value": ".18s ease",
+        "purpose": "Mood backgrounds/borders and object borders/backgrounds."
+      },
+      {
+        "name": "marker-opacity",
+        "value": ".2s ease",
+        "purpose": "Discovery number opacity."
+      },
+      {
+        "name": "scan-window",
+        "value": "3s ease-in-out infinite",
+        "purpose": "Generation mark clip-path from inset(0 round 20px) to inset(9% round 14px) and back."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "animation: none; transition: none; scroll-behavior: auto",
+        "purpose": "App-wide override under prefers-reduced-motion: reduce."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "spacious-opening-min",
+        "value": "1500px"
+      },
+      {
+        "name": "compact-desktop-max",
+        "value": "1250px"
+      },
+      {
+        "name": "narrow-panel-max",
+        "value": "1150px"
+      },
+      {
+        "name": "stacked-max",
+        "value": "850px"
+      },
+      {
+        "name": "phone-max",
+        "value": "500px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Coral primary key",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "App-specific styling of a text-only Kit primary key on the light investigation panel.",
+      "html": "<button class=\"ds-primary-key\">确认指认，揭晓真相</button>",
+      "css": ".ds-primary-key{font-family:'Microsoft YaHei UI', 'PingFang SC', system-ui, sans-serif;min-height:51px;background:#ff947e;border:0;color:#292045;font-size:14px;font-weight:700;width:100%;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-radius:12px;cursor:pointer}.ds-primary-key:hover:not(:disabled){background:#ffab96}.ds-primary-key:focus-visible{outline:3px solid #3b309b;outline-offset:4px}.ds-primary-key:disabled{opacity:.5;cursor:not-allowed}"
+    },
+    {
+      "name": "Secondary photo key",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Transparent bordered control for a new photo or returning to investigation.",
+      "html": "<button class=\"ds-upload-key\">用新照片开案</button>",
+      "css": ".ds-upload-key{font-family:'Microsoft YaHei UI', 'PingFang SC', system-ui, sans-serif;min-height:42px;background:transparent;color:#4f406a;border:1px solid #c9bfdc;width:100%;font-size:12px;border-radius:12px;cursor:pointer}.ds-upload-key:hover:not(:disabled){background:#e4dff7}.ds-upload-key:focus-visible{outline:3px solid #3b309b;outline-offset:4px}.ds-upload-key:disabled{opacity:.5;cursor:not-allowed}"
+    },
+    {
+      "name": "Question field",
+      "kind": "input",
+      "refersTo": "question-field",
+      "description": "App-local text-field treatment; the production control is supplied by Kit.",
+      "html": "<input class=\"ds-question-field\" aria-label=\"自由盘问这个物品\" placeholder=\"也可以直接问它…\" maxlength=\"350\">",
+      "css": ".ds-question-field{font-family:'Microsoft YaHei UI', 'PingFang SC', system-ui, sans-serif;width:100%;min-width:0;font-size:12px;background:#faf8ff;color:#292045;border:1px solid #bdb1d4;padding:10px 11px;border-radius:10px;height:42px;caret-color:#5144c8}.ds-question-field::placeholder{color:#766787}.ds-question-field:focus-visible{outline:3px solid #3b309b;outline-offset:4px}"
+    },
+    {
+      "name": "Investigation panel switches",
+      "kind": "custom",
+      "refersTo": "panel-switch-active",
+      "description": "The two pressed-state buttons switch panel content; this snippet illustrates their styling.",
+      "html": "<div class=\"ds-panel-switches\" role=\"group\" aria-label=\"调查面板\"><button aria-pressed=\"true\">物品来话</button><button aria-pressed=\"false\">线索本<span>2</span></button></div>",
+      "css": ".ds-panel-switches{padding:0 23px;display:flex;gap:22px;min-height:54px;background:#e6dff9}.ds-panel-switches>button{font-family:'Microsoft YaHei UI', 'PingFang SC', system-ui, sans-serif;display:flex;align-items:center;gap:7px;padding:15px 0 11px;border:0;border-bottom:3px solid transparent;color:#64577f;background:transparent;font-size:12px;cursor:pointer}.ds-panel-switches>button[aria-pressed=true]{border-bottom-color:#5144c8;color:#3b309b;font-weight:700}.ds-panel-switches>button>span{background:#d0c5ed;border-radius:4px;padding:0 5px;font-size:10px}.ds-panel-switches>button:focus-visible{outline:3px solid #3b309b;outline-offset:4px}"
+    },
+    {
+      "name": "Photo source tag",
+      "kind": "chip",
+      "refersTo": "photo-source-tag",
+      "description": "A non-interactive source label within the image; typography and surface preview.",
+      "html": "<span class=\"ds-source-tag\">AI 创作的试玩照片 · 实时开案</span>",
+      "css": ".ds-source-tag{font-family:'Microsoft YaHei UI', 'PingFang SC', system-ui, sans-serif;padding:6px 11px;font-size:10px;display:inline-flex;gap:7px;align-items:center;border-radius:6px;color:#fff;background:#292045d9;pointer-events:none}"
+    },
+    {
+      "name": "Object conversation bubble",
+      "kind": "card",
+      "description": "A dialogue container with an asymmetric corner; the text is an existing operation label.",
+      "html": "<p class=\"ds-object-message\">它想了想，准备开口…</p>",
+      "css": ".ds-object-message{font-family:'Microsoft YaHei UI', 'PingFang SC', system-ui, sans-serif;padding:12px 13px;font-size:12px;line-height:1.85;border-radius:0 11px 11px;margin:0 0 13px;overflow-wrap:anywhere;background:#e1d8f3;color:#382851}"
+    },
+    {
+      "name": "Evidence action",
+      "kind": "button",
+      "description": "The soft green action for collecting the selected object's testimony.",
+      "html": "<button class=\"ds-evidence-action\"><span>问问案发时，它看到了什么</span></button>",
+      "css": ".ds-evidence-action{font-family:'Microsoft YaHei UI', 'PingFang SC', system-ui, sans-serif;display:flex;align-items:center;gap:8px;background:#d6eacb;color:#314c29;border:0;padding:12px;width:100%;border-radius:9px;font-size:11px;cursor:pointer}.ds-evidence-action>span{flex:1;text-align:left}.ds-evidence-action:focus-visible{outline:3px solid #3b309b;outline-offset:4px}.ds-evidence-action:disabled{opacity:.5;cursor:not-allowed}"
+    },
+    {
+      "name": "Discovered photo marker",
+      "kind": "custom",
+      "description": "Geometry-only preview of a discovered photo button; actual coordinates and image remain runtime game data.",
+      "html": "<div class=\"ds-marker-plane\"><button class=\"ds-object-hit\" aria-label=\"调查物品 1\"><span class=\"ds-hotspot-number\">01</span><span class=\"ds-hotspot-label\">物品 1</span></button></div>",
+      "css": ".ds-marker-plane{width:280px;height:150px;position:relative;background:#251e3a;border-radius:10px}.ds-object-hit{font-family:'Microsoft YaHei UI', 'PingFang SC', system-ui, sans-serif;position:absolute;left:55px;top:28px;width:155px;height:85px;background:transparent;border:2px solid #d9ffc59c;border-radius:8px;cursor:crosshair;transition:border-color .18s ease,background .18s ease;padding:0;min-width:24px;min-height:24px}.ds-object-hit:focus-visible{outline:3px solid #c7f6a8;outline-offset:4px;box-shadow:0 0 0 7px #292045}.ds-hotspot-number{position:absolute;left:-11px;top:-11px;width:27px;height:27px;display:grid;place-items:center;border-radius:50%;background:#c7f6a8;color:#283b20;font-family:sans-serif;font-size:10px;font-weight:700}.ds-hotspot-label{position:absolute;left:50%;top:calc(100% + 6px);transform:translateX(-50%);max-width:180px;width:max-content;padding:4px 9px;background:#292045eb;color:#fff;border-radius:5px;font-size:10px;opacity:0;pointer-events:none}.ds-object-hit:hover .ds-hotspot-label{opacity:1}@media(prefers-reduced-motion:reduce){.ds-object-hit{transition:none}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Pocket Arcade",
+    "overview": "A photo becomes the board of a pocket arcade. Matte violet encloses the scene; a pale lavender investigation panel carries the controls and dialogue. Mint identifies discoveries and coral gives the main action a physical, toy-like presence.\n\nThis is derived development documentation for the App-specific composition in `src/odd-bureau/odd-bureau.css`, `App.tsx` and `Setup.tsx`. The exported values describe that implementation; they are not an independent token or product authority. Shared Nimi contracts remain under `.nimi/spec/**`, and reusable controls remain owned by `@nimiplatform/kit`. `PRODUCT.md` retains the development brief.\n\nThe companion `.impeccable/design.json` contains standalone style previews and tooling extensions. Its synthesized tonal ramps are preview metadata, not implemented palette steps. This source review does not certify the running game, Runtime availability, accessibility conformance or product acceptance; journeys not run by this documentation task are NOT-VERIFIED.",
+    "keyCharacteristics": [
+      "The photo retains its own aspect ratio and carries the object markers.",
+      "A continuous cabinet joins the scene, cast strip and investigation panel.",
+      "Chinese display lettering supplies playfulness; system text carries reading and controls.",
+      "Tonal surfaces, small state changes and one cabinet shadow keep the material matte."
+    ],
+    "rules": [
+      {
+        "name": "The Two Focus Surfaces Rule",
+        "body": "Use mint focus outlines on the violet stage and deep violet outlines inside light panels. Photo markers add a dark outer ring so focus remains distinct from discovery ink.",
+        "section": "colors"
+      },
+      {
+        "name": "The Display and Dialogue Rule",
+        "body": "Use the display face for the identity and game headings. Keep dialogue, controls and capability setup in the system stack.",
+        "section": "typography"
+      },
+      {
+        "name": "The Photo Plane Rule",
+        "body": "Keep the rendered image and normalized object boxes on the same aspect-ratio plane. The surrounding frame can letterbox; the scene is not a decorative cropped card.",
+        "section": "layout"
+      },
+      {
+        "name": "The App Ownership Rule",
+        "body": "Compose the public Kit controls with App-local styles. This document does not redefine the shared primitives, capability contracts or scaffold-managed setup surface.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do keep the matte violet, lavender, mint and coral roles established by this App.",
+      "Do preserve the photo's geometry, object markers and keyboard-accessible cast controls together.",
+      "Do keep dialogue readable and retain the light-surface focus treatment when composing controls.",
+      "Do retain the source-aware photo label, fictional-story context and visible operation feedback.",
+      "Do derive future documentation updates from the App implementation and preserve shared Kit ownership."
+    ],
+    "donts": [
+      "Don't replace the selected pocket arcade with neon glows, a fake CRT or dashboard tiles.",
+      "Don't put technical capability configuration on the game stage; retain its dedicated setup composition.",
+      "Don't treat preview snippets or synthesized tonal ramps as new product components or canonical tokens.",
+      "Don't use this documentation pass as evidence that an AI journey or product gate passed."
+    ]
+  }
+}

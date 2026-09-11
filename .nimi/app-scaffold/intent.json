@@ -1,0 +1,142 @@
+{
+  "intentVersion": 4,
+  "scaffoldVersion": "2026-08-31.app-lifecycle-v1",
+  "initRequired": true,
+  "initCommand": "pnpm exec nimi-app init",
+  "initOrder": [
+    "nimi-app create",
+    "pnpm install",
+    "pnpm exec nimi-app init"
+  ],
+  "profile": "standalone",
+  "appId": "nimi.odd-bureau",
+  "appTitle": "奇物局",
+  "version": "0.1.0",
+  "packageName": "@nimiplatform/odd-bureau",
+  "packageAuthor": null,
+  "cargoPackageName": "nimiplatform-odd-bureau-shell",
+  "tauriIdentifier": "ai.nimi.apps.nimi.odd-bureau",
+  "accentPack": "nimi-accent",
+  "features": [
+    "studio-media",
+    "studio-voice"
+  ],
+  "directFeatures": [
+    "studio-media",
+    "studio-voice"
+  ],
+  "resolvedModules": [
+    "ai-studio-core",
+    "studio-media",
+    "studio-voice"
+  ],
+  "resolvedViews": [
+    "image.generate",
+    "video.generate",
+    "music.generate",
+    "audio.synthesize",
+    "audio.transcribe",
+    "voice.create",
+    "speech.bundle"
+  ],
+  "resolvedNavigation": [
+    "image.generate",
+    "video.generate",
+    "music.generate",
+    "audio.synthesize",
+    "audio.transcribe",
+    "voice.create",
+    "speech.bundle"
+  ],
+  "resolvedStyles": [
+    "src/capabilities/ai-studio-core/ai-studio-core.css"
+  ],
+  "resolvedAssets": [],
+  "hostAdapterContracts": [
+    "ai-studio-host-v1"
+  ],
+  "appAccessItems": [
+    "runtime.consume"
+  ],
+  "capabilityContractRefs": [
+    "image.generate",
+    "video.generate",
+    "music.generate",
+    "audio.synthesize",
+    "audio.transcribe",
+    "voice.create"
+  ],
+  "requiredStandardizedFeatureRefs": [],
+  "devPort": 1485,
+  "appIdentity": {
+    "appId": "nimi.odd-bureau",
+    "displayName": "奇物局",
+    "version": "0.1.0",
+    "npmPackageName": "@nimiplatform/odd-bureau",
+    "author": null,
+    "cargoPackageName": "nimiplatform-odd-bureau-shell",
+    "nativeBundleIdentifier": "ai.nimi.apps.nimi.odd-bureau",
+    "tauriIdentifier": "ai.nimi.apps.nimi.odd-bureau",
+    "appSlug": "nimi-odd-bureau",
+    "rendererEntryId": "nimi-odd-bureau-app",
+    "devPort": 1485,
+    "devRendererOrigin": "http://127.0.0.1:1485",
+    "appOwnedNamespace": "nimi.odd-bureau",
+    "targetDir": "D:\\nimi-realm\\nimi-apps\\nimiapp-odd-bureau"
+  },
+  "dependencyMatrix": {
+    "npm": {
+      "@nimiplatform/app-tools": "^0.4.0",
+      "@nimiplatform/nimi-coding": "0.6.2",
+      "@nimiplatform/sdk": "^0.10.0",
+      "@nimiplatform/kit": "^0.6.0",
+      "react": "^19.2.8",
+      "react-dom": "^19.2.8",
+      "i18next": "^25.10.10",
+      "lucide-react": "^0.577.0",
+      "typescript": "^5.9.3",
+      "vite": "^7.3.6",
+      "tailwindcss": "^4.3.3",
+      "@tauri-apps/cli": "^2.11.4",
+      "@tailwindcss/vite": "^4.3.3",
+      "@vitejs/plugin-react": "^5.2.0",
+      "@electron/packager": "^20.3.0",
+      "electron": "^42.10.1",
+      "esbuild": "^0.28.2",
+      "yaml": "^2.9.0"
+    },
+    "cargo": {
+      "nimi-shell-tauri": "0.2.1",
+      "tauri": {
+        "version": "2",
+        "features": []
+      },
+      "serde": {
+        "version": "1",
+        "features": [
+          "derive"
+        ]
+      },
+      "serde_json": "1",
+      "url": "2",
+      "base64": "0.22",
+      "dirs": "6",
+      "time": "=0.3.47",
+      "tauri-build": {
+        "version": "2",
+        "features": []
+      }
+    },
+    "toolchain": {
+      "node": ">=24",
+      "pnpm": "10.34.5",
+      "rust": ">=1.80",
+      "tauri": "2"
+    }
+  },
+  "semantics": {
+    "role": "app-scaffold-init-input",
+    "authority": "app-tools-orchestration-input-not-platform-admission",
+    "nimicodingProjectionOwner": "@nimiplatform/nimi-coding"
+  }
+}
