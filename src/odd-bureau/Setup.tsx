@@ -22,7 +22,7 @@ export function Setup({ onBack }: { onBack: () => void }) {
   useEffect(() => { void refresh(); }, []);
   return <main className="setup-page" data-density="regular">
     <Button className="quiet-button" leadingIcon={<ArrowLeft size={16}/>} onClick={onBack}>回到现场</Button>
-    <h1>给事务所接通 AI</h1><p>开案需要「看见物品」和「编故事」两项能力。「让物品开口」可选，稍后也能开启。</p>
+    <h1>给游乐场接通 AI</h1><p>这些玩法需要「看见物品」和「创作玩法」两项能力。「让物品开口」可选，稍后也能开启。</p>
     <div className="setup-surface">
       <ModelConfigAIConfigSurface context={{ owner: 'app-ai-config', appId: 'nimi.odd-bureau' }}
         capabilityContracts={CONTRACTS} capabilities={snapshot?.config?.capabilities ?? (snapshot ? null : undefined)}
@@ -42,8 +42,8 @@ export function Setup({ onBack }: { onBack: () => void }) {
           cloudConnectorPickerLabel: '选择已连接的服务', cloudConnectorPickerPlaceholder: '选择一个服务', cloudNoConnectorsLabel: '尚未连接云端服务',
           cloudConnectorSelectionRequired: '先选择一个已连接的服务，再选择模型。', cloudNoticeLabel: '通过云端处理', cloudNoticeDescription: '文字内容会发送到所选服务，并可能产生该服务的费用。', cloudImplementationLabel: '云端服务', cloudTargetLabel: '云端模型', cloudConnectorLabel: '已连接的服务', cloudLoadFailed: '暂时无法读取云端模型，请重试。',
           loadFailed: '暂时无法读取能力设置。', saveFailed: '能力设置没有保存成功。', conflictLabel: '配置已在别处更新', conflictDescription: '请检查最新配置，再保存你的选择。', clearingLabel: '正在清除…', selectionRequiredLabel: '请选择模型', blockedLabel: '需要处理', unavailableLabel: '暂不可用', mismatchLabel: '能力不匹配',
-          capabilityLabel: id => id === 'vision.locate' ? '看见物品' : id === 'text.generate' ? '编故事' : '让物品开口', capabilityDescription: id => id === 'vision.locate' ? '必需 · 找出照片里的角色和它们的位置' : id === 'text.generate' ? '必需 · 创作谜案、生成角色和自由盘问' : '可选 · 把物品的台词读给你听' }} />
+          capabilityLabel: id => id === 'vision.locate' ? '看见物品' : id === 'text.generate' ? '创作玩法' : '让物品开口', capabilityDescription: id => id === 'vision.locate' ? '必需 · 找出照片里的角色和它们的位置' : id === 'text.generate' ? '必需 · 创作器件规则、角色诉求、故事和提议' : '可选 · 把物品的台词读给你听' }} />
     </div>
-    {snapshot && isConfigured(snapshot) && <Button className="setup-return" trailingIcon={<ArrowRight size={17}/>} onClick={onBack}>配置好了，回去开案</Button>}
+    {snapshot && isConfigured(snapshot) && <Button className="setup-return" trailingIcon={<ArrowRight size={17}/>} onClick={onBack}>配置好了，回去开玩</Button>}
   </main>;
 }

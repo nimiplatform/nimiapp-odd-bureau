@@ -14,7 +14,7 @@ function PropPortrait({ prop, photo, className = '' }: { prop: Prop; photo: Phot
   </svg>;
 }
 
-export function OddBureau() {
+export function OddBureau({ onExit }: { onExit?: () => void } = {}) {
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [mood, setMood] = useState<MoodId>('missing');
@@ -170,7 +170,7 @@ export function OddBureau() {
   return <div className="odd-bureau" data-density="expressive">
     <header className="bureau-header">
       <button className="wordmark" onClick={() => setShowHelp(value => !value)} aria-label="奇物局，查看玩法"><Fingerprint size={33} strokeWidth={1.7} /><span>奇物局<span className="wordmark-en">ODD BUREAU</span></span></button>
-      <p className="header-motto">万物都有点可疑。</p>
+      {onExit ? <Button className="quiet-button" onClick={onExit} disabled={busy}>返回游乐场</Button> : <p className="header-motto">万物都有点可疑。</p>}
       <div className="header-actions"><span className="nimi-credit">POWERED BY NIMI</span><IconButton className="help-button" icon={<Settings2 size={20} />} aria-label="能力设置" onClick={() => { stopVoice(); setShowSetup(value => !value); }} disabled={busy}/><IconButton className="help-button" icon={<CircleHelp size={21} />} aria-label="怎么玩" onClick={() => setShowHelp(value => !value)} /></div>
     </header>
 

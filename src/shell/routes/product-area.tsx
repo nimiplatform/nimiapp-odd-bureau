@@ -1,3 +1,3 @@
-import { OddBureau } from '../../odd-bureau/App.js';
+import { Playground } from '../../odd-bureau/Playground.js';
 
-export function ProductArea() { return <OddBureau />; }
+export function ProductArea() { return <Playground />; }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-11T16:48:54.303Z",
+  "generatedAt": "2026-09-11T19:29:59.000Z",
   "title": "Design System: 奇物局 — App composition",
   "extensions": {
     "colorMeta": {
@@ -196,6 +196,16 @@
         "purpose": "Generation mark clip-path from inset(0 round 20px) to inset(9% round 14px) and back."
       },
       {
+        "name": "playground-object-state",
+        "value": ".16s ease",
+        "purpose": "Playground photo-object border and background-color transitions."
+      },
+      {
+        "name": "wire-flow",
+        "value": "1.1s linear infinite",
+        "purpose": "Machine wire dash offset moves to -26 while sound is playing; reduced motion disables it."
+      },
+      {
         "name": "reduced-motion",
         "value": "animation: none; transition: none; scroll-behavior: auto",
         "purpose": "App-wide override under prefers-reduced-motion: reduce."
@@ -285,21 +295,35 @@
       "description": "Geometry-only preview of a discovered photo button; actual coordinates and image remain runtime game data.",
       "html": "<div class=\"ds-marker-plane\"><button class=\"ds-object-hit\" aria-label=\"调查物品 1\"><span class=\"ds-hotspot-number\">01</span><span class=\"ds-hotspot-label\">物品 1</span></button></div>",
       "css": ".ds-marker-plane{width:280px;height:150px;position:relative;background:#251e3a;border-radius:10px}.ds-object-hit{font-family:'Microsoft YaHei UI', 'PingFang SC', system-ui, sans-serif;position:absolute;left:55px;top:28px;width:155px;height:85px;background:transparent;border:2px solid #d9ffc59c;border-radius:8px;cursor:crosshair;transition:border-color .18s ease,background .18s ease;padding:0;min-width:24px;min-height:24px}.ds-object-hit:focus-visible{outline:3px solid #c7f6a8;outline-offset:4px;box-shadow:0 0 0 7px #292045}.ds-hotspot-number{position:absolute;left:-11px;top:-11px;width:27px;height:27px;display:grid;place-items:center;border-radius:50%;background:#c7f6a8;color:#283b20;font-family:sans-serif;font-size:10px;font-weight:700}.ds-hotspot-label{position:absolute;left:50%;top:calc(100% + 6px);transform:translateX(-50%);max-width:180px;width:max-content;padding:4px 9px;background:#292045eb;color:#fff;border-radius:5px;font-size:10px;opacity:0;pointer-events:none}.ds-object-hit:hover .ds-hotspot-label{opacity:1}@media(prefers-reduced-motion:reduce){.ds-object-hit{transition:none}}"
+    },
+    {
+      "name": "Machine note strip",
+      "kind": "custom",
+      "description": "The repeated pitch-and-duration display used by targets, previews, traces and stored sound; these are component-local fills.",
+      "html": "<div class=\"ds-note-strip\" role=\"img\" aria-label=\"咚1拍、叮1拍、铃2拍、啵1拍、铛1拍\"><span class=\"ds-note ds-note-0\" title=\"咚 · 1拍\"><span>咚</span></span><span class=\"ds-note ds-note-1\" title=\"叮 · 1拍\"><span>叮</span></span><span class=\"ds-note ds-note-2\" title=\"铃 · 2拍\"><span>铃</span><small>×2</small></span><span class=\"ds-note ds-note-3\" title=\"啵 · 1拍\"><span>啵</span></span><span class=\"ds-note ds-note-4\" title=\"铛 · 1拍\"><span>铛</span></span></div>",
+      "css": ".ds-note-strip{font-family:'Microsoft YaHei UI', 'PingFang SC', system-ui, sans-serif;display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin:10px 0 3px;min-height:27px}.ds-note{display:inline-flex;align-items:center;justify-content:center;gap:2px;min-width:29px;height:28px;border-radius:6px;padding:0 5px;color:#292045;font-size:10px;font-weight:700}.ds-note small{font-size:8px;font-weight:500}.ds-note-0{background:#c7f6a8}.ds-note-1{background:#ffd18e}.ds-note-2{background:#b7ddff}.ds-note-3{background:#e3c2ff}.ds-note-4{background:#ffb8af}"
+    },
+    {
+      "name": "Strike work slots",
+      "kind": "custom",
+      "description": "Presentation preview of vacant and filled work slots in the mission panel; the preview is not saved game state.",
+      "html": "<div class=\"ds-task-slots\"><div class=\"ds-filled\"><span>写故事</span><strong>书本</strong><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"/></svg></div><div><span>朗读</span><strong>还没有人</strong></div><div><span>布置现场</span><strong>还没有人</strong></div></div>",
+      "css": ".ds-task-slots{font-family:'Microsoft YaHei UI', 'PingFang SC', system-ui, sans-serif;display:grid;gap:6px;color:#292045}.ds-task-slots>div{display:flex;align-items:center;gap:10px;padding:8px 11px;border-radius:7px;background:#d9cfee;font-size:11px}.ds-task-slots>div>span{color:#665076;width:58px}.ds-task-slots>div>strong{font-size:11px;font-weight:500;flex:1}.ds-task-slots>div.ds-filled{background:#d9ebce;color:#304923}"
     }
   ],
   "narrative": {
     "northStar": "Pocket Arcade",
-    "overview": "A photo becomes the board of a pocket arcade. Matte violet encloses the scene; a pale lavender investigation panel carries the controls and dialogue. Mint identifies discoveries and coral gives the main action a physical, toy-like presence.\n\nThis is derived development documentation for the App-specific composition in `src/odd-bureau/odd-bureau.css`, `App.tsx` and `Setup.tsx`. The exported values describe that implementation; they are not an independent token or product authority. Shared Nimi contracts remain under `.nimi/spec/**`, and reusable controls remain owned by `@nimiplatform/kit`. `PRODUCT.md` retains the development brief.\n\nThe companion `.impeccable/design.json` contains standalone style previews and tooling extensions. Its synthesized tonal ramps are preview metadata, not implemented palette steps. This source review does not certify the running game, Runtime availability, accessibility conformance or product acceptance; journeys not run by this documentation task are NOT-VERIFIED.",
+    "overview": "A photo becomes the board of a pocket arcade. Matte violet encloses the scene; a pale lavender play panel carries rules, proposals and dialogue. Mint picks out objects and connections, and coral gives the main action a physical, toy-like presence.\n\nThis is derived development documentation for the App-specific composition in `src/odd-bureau`: `App.tsx`, `Playground.tsx`, `PhotoStage.tsx`, `MachineGame.tsx`, `StrikeGame.tsx`, `Setup.tsx`, `odd-bureau.css` and `playground.css`. The exported values describe that implementation; they are not an independent token or product authority. Approved playground rules remain in `.nimi/spec/playground.authority.yaml`, and reusable controls remain owned by `@nimiplatform/kit`. `PRODUCT.md` retains the development brief.\n\nThe companion `.impeccable/design.json` contains standalone style previews and tooling extensions. Its synthesized tonal ramps are preview metadata, not implemented palette steps. This source review does not certify the running game, Runtime availability, accessibility conformance or product acceptance; journeys not run by this documentation task are NOT-VERIFIED.",
     "keyCharacteristics": [
       "The photo retains its own aspect ratio and carries the object markers.",
-      "A continuous cabinet joins the scene, cast strip and investigation panel.",
+      "A continuous cabinet joins the scene, cast strip, activity controls and light reading panel.",
       "Chinese display lettering supplies playfulness; system text carries reading and controls.",
       "Tonal surfaces, small state changes and one cabinet shadow keep the material matte."
     ],
     "rules": [
       {
         "name": "The Two Focus Surfaces Rule",
-        "body": "Use mint focus outlines on the violet stage and deep violet outlines inside light panels. Photo markers add a dark outer ring so focus remains distinct from discovery ink.",
+        "body": "Use mint focus outlines on the violet stage and deep violet outlines inside light panels. Mystery photo markers add a dark outer ring so focus remains distinct from discovery ink.",
         "section": "colors"
       },
       {

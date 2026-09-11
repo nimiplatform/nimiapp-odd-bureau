@@ -30,7 +30,7 @@ export async function samplePhoto(): Promise<Photo> {
   return { ...await photoFromFile(await response.blob(), '早餐之后'), source: 'sample' };
 }
 
-async function textTurn(prompt: string, signal: AbortSignal, maxTokens: number, onDelta?: (text: string) => void): Promise<string> {
+export async function textTurn(prompt: string, signal: AbortSignal, maxTokens: number, onDelta?: (text: string) => void): Promise<string> {
   signal.throwIfAborted();
   const stream = await getClient().ai.text.streamTurn({ messages: [{ role: 'user', text: prompt }], temperature: 0.8, maxTokens });
   let text = ''; let complete = false;
@@ -53,9 +53,8 @@ async function textTurn(prompt: string, signal: AbortSignal, maxTokens: number, 
 }
 
 // @nimi-authority: rule.nimi.sdks.feature-clients.r102
-export async function openCase(photo: Photo, mood: MoodId, signal: AbortSignal, onStage: (stage: Stage) => void, onFound?: (props: Prop[]) => void): Promise<Session> {
+export async function locatePhoto(photo: Photo, signal: AbortSignal, onFound?: (props: Prop[]) => void): Promise<Prop[]> {
   signal.throwIfAborted();
-  onStage('locating');
   let props = inventories.get(photo.blob);
   if (!props) {
     const upload = await getClient().ai.artifacts.upload({ bytes: new Uint8Array(await photo.blob.arrayBuffer()), mimeType: 'image/jpeg' });
@@ -105,6 +104,14 @@ export async function openCase(photo: Photo, mood: MoodId, signal: AbortSignal, 
   inventories.set(photo.blob, props);
   }
   onFound?.([...props]);
+  return props;
+}
+
+export function rememberInventory(photo: Photo, props: Prop[]): void { inventories.set(photo.blob, props); }
+
+export async function openCase(photo: Photo, mood: MoodId, signal: AbortSignal, onStage: (stage: Stage) => void, onFound?: (props: Prop[]) => void): Promise<Session> {
+  onStage('locating');
+  const props = await locatePhoto(photo, signal, onFound);
   onStage('writing');
   const mystery = parseMystery(await textTurn(casePrompt(props, mood), signal, 3500), props);
   signal.throwIfAborted();
@@ -160,7 +167,7 @@ export async function restoreSession(): Promise<{ session: Session; photo: Photo
 export function errorMessage(error: unknown): string {
   const reason = typeof error === 'object' && error !== null && 'reasonCode' in error ? String(error.reasonCode) : '';
   if (reason === 'ai-local-configuration-not-configured') return '本机 AI 的运行环境还没有准备好。请在 Nimi 的 Runtime → 环境中准备对应能力的运行环境，然后回来重新开案。';
-  if (reason === 'ai-config-not-found' || reason === 'ai-config-invalid') return '事务所还没有接通所需能力。打开右上角「能力设置」，配置看见物品和编故事后再试。';
+  if (reason === 'ai-config-not-found' || reason === 'ai-config-invalid') return '游乐场还没有接通所需能力。打开右上角「能力设置」，配置看见物品和创作玩法后再试。';
   if (reason === 'ai-execution-interrupted') return 'Nimi 在本次操作中重新启动了。照片还在，你可以重新开案。';
   if (error instanceof Error) return error.message;
   return '这次操作没有完成，请重试。';

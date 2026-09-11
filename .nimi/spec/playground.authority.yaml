@@ -1,0 +1,48 @@
+format: nimicoding.authority/v2
+owner: app.odd-bureau
+scope: app.odd-bureau.playground
+units:
+  - id: definition.odd-bureau.playground.round
+    kind: definition
+    title: Photo playground round
+    meaning: A photo playground round is App-owned fictional play state over a user-selected photo and its real Nimi vision.locate positions; the approved activities are a strange machine and a strike negotiation, alongside the existing mystery activity.
+  - id: rule.odd-bureau.playground.photo
+    kind: rule
+    title: Real photo geometry
+    modality: must
+    statement: Actors and device anchors use the current photo's actual normalized Runtime locate results, preserve that image's aspect ratio, and distinguish fictional game actions from changes to the original image; AI-generated text cannot invent coordinates or rename an observed object into another kind.
+    condition: Whenever a round is prepared, rendered, or restored.
+    failure: Preserve the photo and stop preparation on missing or invalid locate results rather than substituting authored hotspots or a sample success.
+    relations:
+      - type: applies_to
+        target: definition.odd-bureau.playground.round
+  - id: rule.odd-bureau.playground.machine
+    kind: rule
+    title: Stable machine execution
+    modality: must
+    statement: Machine rules are fixed for the round, chosen from executable operations appropriate to the observed objects, and shown before use; a valid source-to-container path produces deterministic note transformations and a visible trace, with bounded storage and a reachable challenge; completion leaves experimentation available.
+    condition: Whenever a machine rule set, connection, run, playback, or storage action is accepted.
+    failure: Reject unsupported operations, unknown or repeated path nodes, malformed plans, and unreachable goals; failed generation cannot create a playable machine or a success result.
+    relations:
+      - type: applies_to
+        target: definition.odd-bureau.playground.round
+  - id: rule.odd-bureau.playground.promises
+    kind: rule
+    title: Consequential strike promises
+    modality: must
+    statement: A strike round has one leave allocation, one credit allocation, and story, reading, and stage responsibilities; actor offers and their explicit conditions are fixed at preparation, confirmed actions consume their allocations and preserve earlier promises, and natural-language proposals require player confirmation and the same validation as direct actions; the performed tale is separate from backstage arrangements and cannot renegotiate leave, credit, or assigned work.
+    condition: Whenever a strike plan, proposal, promise, or performance is prepared or committed.
+    failure: Reject invented actors or actions, unavailable allocations, incompatible assignments and unsatisfiable plans; narration cannot revoke an accepted promise or report an unperformed task as completed.
+    relations:
+      - type: applies_to
+        target: definition.odd-bureau.playground.round
+  - id: rule.odd-bureau.playground.persistence
+    kind: rule
+    title: Preserve real play progress
+    modality: must
+    statement: The App persists its active round and corresponding photo through the admitted SDK App storage surface, restores validated rule and action state, retains player intent after AI failure, and propagates cancellation without replacing a failure with a fictional successful result.
+    condition: Whenever the App saves, resumes, cancels, or retries a playground activity.
+    failure: Show a recoverable save or execution failure and do not claim that unsaved progress, incomplete generation, or unplayed audio completed successfully.
+    relations:
+      - type: applies_to
+        target: definition.odd-bureau.playground.round
