@@ -13,3 +13,13 @@ Published dependencies: SDK 0.21.0, Kit/native 0.19.3, App Tools 0.12.1, nimi-co
 Run `pnpm typecheck`, `pnpm exec nimi-app test`, and `pnpm exec nimi-app check --production`. Build and pack through `pnpm exec nimi-app build --target macos-aarch64 --production` and `pnpm exec nimi-app pack --target macos-aarch64 --production`; Windows uses the declared `windows-x86_64` target. Annotated version tags invoke the managed GitHub Release workflow. Registry admission and real installed-App acceptance are separate steps.
 
 The App-owned license is MIT, copyright Nimi Network Limited. Template notices remain in `licenses/nimi-app-template.txt`. Public SDK/Kit carriers own Runtime, registration, authorization and AI jobs; this repository owns the game and its local progress.
+
+## Published dependency and Catalog acceptance (2026-10-13)
+
+Current public release: [0.1.1](https://github.com/nimiplatform/nimiapp-odd-bureau/releases/tag/v0.1.1); [Registry admission #87](https://github.com/nimiplatform/nimi-app-registry/pull/87) is merged for macOS arm64 and Windows x64. Frozen locks use published SDK 0.21.0, Kit/native 0.19.3, App Tools 0.12.1 and nimi-coding 0.6.5; no local Nimi archive or source-link resolution is required.
+
+Repository checks and managed production builds, package provenance and immutable Release checks passed for both declared targets. Actual Catalog download, installation and AI acceptance ran on macOS arm64 through source Nimi Home and its matching protected Runtime (Nimi main 35498102b). Runtime identity and App Access checks remain enforced.
+
+Real vision localization found six objects in the bundled trial photo. Real text generation produced the machine rules. Clock → book → plant → cup met the actual six-note target; the completed challenge and stored sounds survived a full Home stop/launch.
+
+**NOT-VERIFIED:** Windows GUI installation and AI use. Mystery, negotiation and optional speech synthesis were not rerun.
