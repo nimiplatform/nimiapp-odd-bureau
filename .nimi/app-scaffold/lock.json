@@ -4,9 +4,9 @@
   "profile": "standalone",
   "appId": "nimi.odd-bureau",
   "appTitle": "奇物局",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "packageName": "@nimiplatform/odd-bureau",
-  "packageAuthor": null,
+  "packageAuthor": "Nimi Team",
   "cargoPackageName": "nimiplatform-odd-bureau-shell",
   "tauriIdentifier": "ai.nimi.apps.nimi.odd-bureau",
   "accentPack": "nimi-accent",
@@ -72,9 +72,9 @@
   "appIdentity": {
     "appId": "nimi.odd-bureau",
     "displayName": "奇物局",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "npmPackageName": "@nimiplatform/odd-bureau",
-    "author": null,
+    "author": "Nimi Team",
     "cargoPackageName": "nimiplatform-odd-bureau-shell",
     "nativeBundleIdentifier": "ai.nimi.apps.nimi.odd-bureau",
     "tauriIdentifier": "ai.nimi.apps.nimi.odd-bureau",
@@ -250,11 +250,11 @@
     },
     "nimi.app.yaml": {
       "class": "scaffold-managed glue",
-      "sha256": "16348aeffba3dc17e82889706b779245a80d9d990fae94dfdfba0cd88b61c1be"
+      "sha256": "b1bb53ea8f462ff849c554a1f047fa3f16964b04e4bd0117be65552573e3bc41"
     },
     ".nimi/config/app-identity.yaml": {
       "class": "scaffold-managed glue",
-      "sha256": "85d829e0e7cdebb72f39600c8f03e664878b4253eb6d702bf93ac1f31e7f11f1"
+      "sha256": "5dc2a16cabaac357ad314aaecc923dee5be7acbd65669eea050b75067880050f"
     },
     ".nimi/contracts/scaffold-boundary.yaml": {
       "class": "scaffold-managed glue",
@@ -298,11 +298,11 @@
     },
     "src-tauri/Cargo.toml": {
       "class": "scaffold-managed glue",
-      "sha256": "e0bc49002a02461ff3b0adcadf8b8bdc7a123577a97c97577928697b73ec160e"
+      "sha256": "8fc887381838542fdf5cd43632ab6f7946fc288778087b224f05d9b065493c76"
     },
     "src-tauri/tauri.conf.json": {
       "class": "scaffold-managed glue",
-      "sha256": "75a2cbf5e74fc3c69081e96a610ee7fbfc071b8f9ace980b341964ce20820e1b"
+      "sha256": "925d5c7f23222fa2c0d62f863928f31e8b57dfe40b26cd01c57c2d0ecad2691e"
     },
     "src/shell/App.tsx": {
       "class": "scaffold-managed glue",
@@ -402,7 +402,7 @@
     },
     ".nimi/app-scaffold/intent.json": {
       "class": "scaffold-managed glue",
-      "sha256": "6031b17355c73a60d86c951b560408e26acdce03563b8406983bb2a48301dcd1"
+      "sha256": "cc29fd76800a69674453a25706e058f55eec5aa7c0ae4f677cadfe7c3d64425d"
     },
     ".agents/skills/nimi-app-lifecycle/SKILL.md": {
       "class": "scaffold-managed glue",
@@ -448,11 +448,11 @@
   "appOwnedInitialHashes": {
     "LICENSE": {
       "class": "app-owned product code",
-      "sha256": "af7c7e1ce15f4291635249f539757b33bf907c3632b5ab282abe7afeaa9c37b3"
+      "sha256": "b5023f8aa1b0ac908b2a8d50fc7f98cc60a999679f4fb18b53758ee9a35605fc"
     },
     "package.json": {
       "class": "app-owned product code",
-      "sha256": "d8a889a079fbbf0fe179a754cb27c17387adc82fa0922d9ed15120788c9658d2"
+      "sha256": "52803d651bc600accf1827f31ccb584c265d62a4db32282d3cf7db9b4f964deb"
     },
     ".nimi/config/build-profile.yaml": {
       "class": "app-owned product code",
@@ -460,7 +460,7 @@
     },
     ".nimi/admission/submission.yaml": {
       "class": "app-owned product code",
-      "sha256": "da327f4d0b1c42270552950421616d9ecab9c8a46ebdd89ce0aefc6cb14ec92f"
+      "sha256": "748e0d48a81cda48129d07607098db553e6206e784a6a2da2e7004eadd202b21"
     },
     "AGENTS.md": {
       "class": "app-owned product code",

@@ -1,6 +1,6 @@
 {
   "productName": "奇物局",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "identifier": "ai.nimi.apps.nimi.odd-bureau",
   "build": {
     "beforeDevCommand": "pnpm run dev:renderer",

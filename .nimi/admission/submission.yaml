@@ -1,11 +1,11 @@
 app_id: nimi.odd-bureau
 display_name: 奇物局
-version: 0.1.0
+version: 0.1.1
 profile: standalone
 npm_package_name: "@nimiplatform/odd-bureau"
 cargo_package_name: nimiplatform-odd-bureau-shell
 tauri_identifier: ai.nimi.apps.nimi.odd-bureau
-package_author: null
+package_author: Nimi Team
 submission_role: developer-submitted-input
 capability_contract_refs:
   - text.generate
