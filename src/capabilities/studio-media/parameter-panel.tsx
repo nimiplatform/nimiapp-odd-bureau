@@ -1,3 +1,4 @@
+import { MusicFields } from './music-parameters.js';
 import { useRef, useState, type ChangeEvent } from 'react';
 import { Button, SelectField, TextareaField } from '@nimiplatform/kit/ui';
 import { Trash2, Upload } from 'lucide-react';
@@ -17,7 +18,6 @@ import { useAIStudioHost } from '../ai-studio-core/host-context.js';
 import {
   MAX_STUDIO_ARTIFACT_UPLOAD_BYTES,
   type StudioImageGenerationParameters,
-  type StudioMusicGenerationParameters,
   type StudioVideoGenerationParameters,
 } from './parameters.js';
 
@@ -28,27 +28,6 @@ function isStudioImageMimeType(value: string): value is StudioImageMimeType {
   return STUDIO_IMAGE_MIME_TYPES.includes(value as StudioImageMimeType);
 }
 
-function MusicFields(props: StudioParameterPanelProps) {
-  const { translate: t } = useAIStudioHost();
-  const parameters = props.parameters as StudioMusicGenerationParameters;
-  const update = props.onChange as (next: StudioMusicGenerationParameters) => void;
-  const translate: StudioParameterTranslate = (key, values) => t(key, values);
-  const fields: StudioParameterFieldDefinition[] = [{
-    field: 'lyrics',
-    label: t('Studio.parameters.fields.lyrics'),
-    render: (routeDisabled) => (
-      <StudioParameterField label={t('Studio.parameters.fields.lyrics')}>
-        <TextareaField
-          value={parameters.lyrics ?? ''}
-          disabled={props.disabled || routeDisabled}
-          textareaClassName="min-h-36 font-mono"
-          onChange={(event) => update({ ...parameters, lyrics: event.currentTarget.value })}
-        />
-      </StudioParameterField>
-    ),
-  }];
-  return <StudioRouteAwareParameterFields contract={props.contract} source={props.source} fields={fields} translate={translate} />;
-}
 
 function ImageFields(props: StudioParameterPanelProps) {
   const host = useAIStudioHost();
@@ -60,6 +39,7 @@ function ImageFields(props: StudioParameterPanelProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [uploadedFileName, setUploadedFileName] = useState('');
+  const imageMimes = props.source === 'cloud' ? ['image/png', 'image/jpeg'] : STUDIO_IMAGE_MIME_TYPES;
   async function selectReferenceImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];
     event.currentTarget.value = '';
@@ -68,8 +48,8 @@ function ImageFields(props: StudioParameterPanelProps) {
       setUploadError(t('Studio.parameters.imageFileTooLarge'));
       return;
     }
-    if (!isStudioImageMimeType(file.type)) {
-      setUploadError(t('Studio.parameters.imageFileMimeUnsupported'));
+    if (!isStudioImageMimeType(file.type) || !imageMimes.includes(file.type as StudioImageMimeType)) {
+      setUploadError(t(props.source === 'cloud' ? 'Studio.parameters.cloudImageFileMimeUnsupported' : 'Studio.parameters.imageFileMimeUnsupported'));
       return;
     }
     setUploading(true);
@@ -118,7 +98,7 @@ function ImageFields(props: StudioParameterPanelProps) {
     {
       field: 'seed',
       label: t('Studio.parameters.fields.seed'),
-      render: (routeDisabled) => <StudioNumberParameter current={parameters} field="seed" label={t('Studio.parameters.fields.seed')} onChange={update} disabled={props.disabled || routeDisabled} step={1} />,
+      render: (routeDisabled) => <StudioNumberParameter current={parameters} field="seed" label={t('Studio.parameters.fields.seed')} onChange={update} disabled={props.disabled || routeDisabled} min={-1} max={2147483647} step={1} />,
     },
     textField('aspectRatio', t('Studio.parameters.fields.aspectRatio')),
     textField('quality', t('Studio.parameters.fields.quality')),
@@ -133,7 +113,7 @@ function ImageFields(props: StudioParameterPanelProps) {
       label: t('Studio.parameters.fields.referenceImageFile'),
       render: (routeDisabled) => (
         <StudioParameterField label={t('Studio.parameters.fields.referenceImageFile')}>
-          <input ref={inputRef} className="studio-parameters__file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={props.disabled || routeDisabled || uploading} onChange={(event) => void selectReferenceImage(event)} />
+          <input ref={inputRef} className="studio-parameters__file-input" type="file" accept={imageMimes.join(',')} disabled={props.disabled || routeDisabled || uploading} onChange={(event) => void selectReferenceImage(event)} />
           <div className="studio-parameters__file-row">
             <Button type="button" tone="ghost" size="sm" disabled={props.disabled || routeDisabled || uploading} leadingIcon={<Upload size={14} aria-hidden="true" />} onClick={() => inputRef.current?.click()}>
               {uploading ? t('Studio.parameters.uploadingImage') : t('Studio.parameters.chooseImageFile')}
@@ -146,6 +126,7 @@ function ImageFields(props: StudioParameterPanelProps) {
             ) : null}
           </div>
           {uploadError ? <small>{uploadError}</small> : null}
+          <small>{t(props.source === 'cloud' ? 'Studio.parameters.cloudImageReferenceHint' : 'Studio.parameters.imageReferenceHint')}</small>
         </StudioParameterField>
       ),
     },
@@ -219,6 +200,7 @@ function VideoFields(props: StudioParameterPanelProps) {
             disabled={props.disabled || routeDisabled}
             options={[
               { value: 't2v', label: t('Studio.parameters.videoModeT2v') },
+              ...(props.source === 'cloud' ? [{ value: 'i2v-first-frame', label: t('Studio.parameters.videoModeFirstFrame') }] : []),
               { value: 'i2v-reference', label: t('Studio.parameters.videoModeReference') },
             ]}
             onValueChange={(value) => update({ ...parameters, mode: value as StudioVideoGenerationParameters['mode'] })}
@@ -226,6 +208,7 @@ function VideoFields(props: StudioParameterPanelProps) {
         </StudioParameterField>
       ),
     },
+    ...(parameters.mode === 'i2v-first-frame' ? [textField('firstFrameImageUrl', t('Studio.parameters.fields.firstFrameImageUrl'), 'https://…')] : []),
     ...(parameters.mode === 'i2v-reference' ? [{
       field: 'referenceArtifactId',
       label: referenceLabel,

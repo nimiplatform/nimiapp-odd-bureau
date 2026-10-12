@@ -20,7 +20,9 @@ const App = lazy(async () => {
 });
 
 const rendererRoot = document.getElementById('root') as HTMLElement;
-rendererRoot.classList.add('nimi-workbench-host');
+/* Admitted workbench styles use this module scope, including body-portaled controls. */
+document.body.classList.add('nimi-ui-module--lab');
+rendererRoot.classList.add('nimi-workbench-host', 'nimi-ui-module--lab');
 createRoot(rendererRoot).render(
   <React.StrictMode>
     <NimiThemeProvider accentPack="nimi-accent">

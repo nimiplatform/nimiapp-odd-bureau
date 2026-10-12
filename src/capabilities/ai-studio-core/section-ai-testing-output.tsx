@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Dialog, DialogContent, DialogTitle, IconButton, nimiToast, Tooltip } from '@nimiplatform/kit/ui';
+import { Button, Dialog, DialogContent, DialogTitle, IconButton, nimiToast, Tooltip } from '@nimiplatform/kit/ui';
 import { Copy as CopyIcon, Download as DownloadIcon, Maximize2, X } from 'lucide-react';
-import { useAIStudioHost } from './host-context.js';
+import { useAIStudioHost, type AIStudioHostPort, type StudioTextExportResult } from './host-context.js';
 import type { StudioCapabilityRunResult } from './runtime-types.js';
 import { openNimiLocalAppAssetMediaUrl } from '@nimiplatform/kit/shell/renderer/bridge';
 import { studioNonSuccessReasonTitle, type StudioTranslate } from './non-success-presentation.js';
@@ -17,6 +17,7 @@ export function formatTypedOutput(
   translate: StudioTranslate,
 ): string {
   const output = result.output;
+  if (output.kind === 'speaker-embedding') return JSON.stringify({ jobId: output.jobId, spaceId: output.spaceId, vector: output.vector }, null, 2);
   if (output.kind === 'vision-locate') return JSON.stringify({ jobId: output.jobId, ...output.result }, null, 2);
   if (output.kind === 'text') {
     return output.text || translate('StudioShell.emptyBody');
@@ -25,8 +26,42 @@ export function formatTypedOutput(
     return JSON.stringify({
       vectors: output.vectorCount,
       dimensions: output.dimensions,
+      // Equal dimensions do not make two vectors comparable; the space does.
+      spaceId: output.spaceId ?? null,
       sample: output.sample,
       totalTokens: output.totalTokens,
+    }, null, 2);
+  }
+  if (output.kind === 'text-annotation') {
+    return JSON.stringify({
+      jobId: output.jobId,
+      jobState: output.jobState,
+      language: output.language,
+      documentCount: output.documentCount,
+      tokenCount: output.tokenCount,
+      sentenceCount: output.sentenceCount,
+      document: output.document,
+    }, null, 2);
+  }
+  if (output.kind === 'text-exchange') {
+    return JSON.stringify({
+      scenario: output.scenario,
+      steps: output.steps,
+      ...(output.structured !== undefined ? { structured: output.structured } : {}),
+      text: output.text,
+    }, null, 2);
+  }
+  if (output.kind === 'text-decision') {
+    return JSON.stringify({ answers: output.answers }, null, 2);
+  }
+  if (output.kind === 'session') {
+    return JSON.stringify({
+      capabilityContract: output.capabilityContract,
+      startedAt: output.startedAt,
+      endedAt: output.endedAt,
+      ending: output.ending,
+      terminalReason: output.terminalReason,
+      observed: output.observed,
     }, null, 2);
   }
   if (output.kind === 'artifacts') {
@@ -34,12 +69,19 @@ export function formatTypedOutput(
       jobId: output.jobId,
       jobState: output.jobState,
       artifactCount: output.artifactCount,
+      ...(output.musicGeneration ? { musicGeneration: output.musicGeneration } : {}),
+      ...(output.musicTranscription ? { musicTranscription: output.musicTranscription } : {}),
+      ...(output.voiceConversion ? { voiceConversion: output.voiceConversion } : {}),
+      ...(output.audioSeparation ? { audioSeparation: output.audioSeparation } : {}),
+      ...(output.faceSwap ? { faceSwap: output.faceSwap } : {}),
       artifacts: output.artifacts,
       firstArtifact: output.firstArtifact,
     }, null, 2);
   }
   if (output.kind === 'transcript') {
-    return output.text || translate('StudioShell.emptyTranscript');
+    return output.transcription
+      ? JSON.stringify({ jobId: output.jobId, jobState: output.jobState, transcription: output.transcription }, null, 2)
+      : output.text || translate('StudioShell.emptyTranscript');
   }
   if (output.kind === 'voice-asset') {
     return JSON.stringify({
@@ -49,12 +91,36 @@ export function formatTypedOutput(
       creationSource: output.creationSource,
       assetStatus: output.assetStatus,
       voiceReference: output.voiceReference,
+      ...(output.preview ? { preview: output.preview } : {}),
+      ...(output.expiresAt ? { expiresAt: output.expiresAt } : {}),
+      ...(output.inputTokens !== undefined ? { inputTokens: output.inputTokens } : {}),
+      ...(output.outputTokens !== undefined ? { outputTokens: output.outputTokens } : {}),
     }, null, 2);
   }
   return JSON.stringify({
     voiceCount: output.voiceCount,
     sample: output.sample,
   }, null, 2);
+}
+
+// A Job the owner already issued stays locatable after a non-success, but
+// Runtime retains it only for its own retention period.
+export function KnownJobNotice({ jobId }: { readonly jobId?: string }) {
+  const { translate: t } = useAIStudioHost();
+  if (!jobId) return null;
+  return <p className="studio-result__hint">{t('StudioResults.job.known', { jobId })}</p>;
+}
+
+export function EmbeddingResultBody({ spaceId }: { readonly spaceId?: string }) {
+  const { translate: t } = useAIStudioHost();
+  return (
+    <div className="studio-result__rich">
+      <p className="studio-result__plain">{t('StudioShell.embeddingSuccess')}</p>
+      <p className="studio-result__hint">
+        {spaceId ? t('StudioResults.embedding.space', { spaceId }) : t('StudioResults.embedding.spaceNotRecorded')}
+      </p>
+    </div>
+  );
 }
 
 export function formatNonSuccessOutput(
@@ -66,6 +132,7 @@ export function formatNonSuccessOutput(
     '',
     `Capability: ${result.capabilityId}`,
     `Reason: ${result.reason}`,
+    result.jobId ? `Job: ${result.jobId}` : '',
     result.missingSurface ? `Missing surface: ${result.missingSurface}` : '',
     '',
     'Message:',
@@ -120,7 +187,7 @@ export function RuntimeDiagnosticsActions({
   function handleDownloadDiagnostics() {
     if (!canExport) return;
     const stamp = new Date(rendererHost.clock.now()).toISOString().replace(/[:.]/g, '-');
-    void downloadTextFile(rendererHost.app.commands, `${filenameBase}-runtime-details-${stamp}.txt`, text);
+    void downloadTextFile(rendererHost, `${filenameBase}-runtime-details-${stamp}.txt`, text);
   }
   return (
     <div className="studio-diag__actions">
@@ -145,9 +212,11 @@ export function hasPreviewableArtifact(artifact?: StudioArtifactPreviewSource): 
 export function ArtifactMediaPreview({
   artifact,
   fallbackLabel,
+  mediaLabel,
 }: {
   artifact?: StudioArtifactPreviewSource;
   fallbackLabel: string;
+  mediaLabel?: string;
 }) {
   const relativePath = artifact?.relativePath;
   const mimeType = artifact?.mediaType ?? '';
@@ -199,7 +268,7 @@ export function ArtifactMediaPreview({
     };
   }, [imagePreviewOpen, relativePath, t]);
   if (!hasPreviewableArtifact(artifact) || !url) return null;
-  const label = artifact?.displayName || relativePath || fallbackLabel;
+  const label = mediaLabel || artifact?.displayName || relativePath || fallbackLabel;
   const isImage = branch === 'image';
   let media: ReactNode = null;
   if (isImage) {
@@ -220,7 +289,7 @@ export function ArtifactMediaPreview({
       </div>
     );
   } else if (branch === 'audio') {
-    media = <audio controls src={url} />;
+    media = <audio controls src={url} aria-label={label} />;
   } else if (branch === 'video') {
     media = <video controls src={url} />;
   }
@@ -228,8 +297,10 @@ export function ArtifactMediaPreview({
   return (
     <>
       <figure className="ai-result__media" data-mime={mimeType}>
+        {mediaLabel ? <figcaption className="studio-result__plain">{mediaLabel}</figcaption> : null}
         {media}
       </figure>
+      {branch === 'audio' && artifact?.speechAlignment ? <SpeechAlignmentResultView alignment={artifact.speechAlignment} /> : null}
       {isImage ? (
         <Dialog open={imagePreviewOpen} onOpenChange={(open) => { if (!open) setImagePreviewOpen(false); }}>
           <DialogContent
@@ -255,17 +326,35 @@ export function ArtifactMediaPreview({
   );
 }
 
+export function SpeechAlignmentResultView({ alignment }: { readonly alignment: NonNullable<StudioArtifactPreviewSource['speechAlignment']> }) {
+  const host = useAIStudioHost(), t = host.translate;
+  const tokens = alignment.tokens, visible = tokens.slice(0, 400);
+  return <section className="studio-result__rich" aria-label={t('StudioResults.alignment.title')}>
+    <Button size="sm" tone="secondary" onClick={() => void downloadTextFile(host, 'speech-alignment.json', JSON.stringify(alignment, null, 2))}>{t('StudioResults.alignment.exportComplete')}</Button>
+    <details className="studio-annotation" open>
+      <summary>{t(alignment.unit === 1 ? 'StudioResults.alignment.wordTimes' : 'StudioResults.alignment.charTimes', { count: tokens.length })}</summary>
+      <p className="studio-result__hint">{t('StudioResults.alignment.timeHint')}</p>
+      <table className="studio-annotation__tokens"><thead><tr><th>#</th><th>{t('StudioResults.transcript.word')}</th><th>{t('StudioResults.transcript.start')}</th><th>{t('StudioResults.transcript.end')}</th></tr></thead>
+        <tbody>{visible.map((token, index) => <tr key={`${index}:${token.startMs}`}><td>{index + 1}</td><td>{token.token}</td><td>{(Number(token.startMs) / 1000).toFixed(3)}</td><td>{(Number(token.endMs) / 1000).toFixed(3)}</td></tr>)}</tbody>
+      </table>
+      {visible.length < tokens.length ? <p className="studio-result__hint">{t('StudioResults.transcript.truncatedView', { shown: visible.length, total: tokens.length })}</p> : null}
+    </details>
+  </section>;
+}
+
 export function ArtifactMediaResult({
   artifact,
   fallbackLabel,
+  mediaLabel,
 }: {
   artifact?: StudioArtifactPreviewSource;
   fallbackLabel: string;
+  mediaLabel?: string;
 }) {
   const { translate: t } = useAIStudioHost();
   const branch = studioArtifactRenderBranch(artifact);
   if (branch === 'image' || branch === 'audio' || branch === 'video') {
-    return <ArtifactMediaPreview artifact={artifact} fallbackLabel={fallbackLabel} />;
+    return <ArtifactMediaPreview artifact={artifact} fallbackLabel={fallbackLabel} mediaLabel={mediaLabel} />;
   }
   return (
     <div className="studio-result__media-unavailable">
@@ -308,9 +397,42 @@ export function TextStudioOutputBody({ text }: { text: string }) {
 }
 
 export async function downloadTextFile(
-  commands: ReturnType<typeof useAIStudioHost>['app']['commands'],
+  host: Pick<AIStudioHostPort, 'app' | 'translate'>,
   filename: string,
   body: string,
-) {
-  await commands.exportText({ filename, body });
+): Promise<StudioTextExportResult> {
+  let result: StudioTextExportResult;
+  try {
+    result = await host.app.commands.exportText({ filename, body });
+  } catch (error) {
+    result = { ok: false, error };
+  }
+  if (!result.ok) {
+    nimiToast.danger(host.translate('Common.exportFailed'));
+  } else if (!result.value.revealed) {
+    nimiToast.warning(host.translate('Common.exportSavedRevealFailed', { path: result.value.artifactPath }), { durationMs: 12000 });
+  } else {
+    nimiToast.success(host.translate('Common.exportSaved', { path: result.value.artifactPath }));
+  }
+  return result;
+}
+
+export async function revealStudioAsset(host: Pick<AIStudioHostPort, 'sdk' | 'translate'>, relativePath: string): Promise<boolean> {
+  try {
+    await host.sdk.revealLocalAppAsset(relativePath);
+    nimiToast.success(host.translate('Common.assetRevealed'));
+    return true;
+  } catch {
+    nimiToast.danger(host.translate('Common.assetRevealFailed', { path: relativePath }));
+    return false;
+  }
+}
+
+export function SpeakerEmbeddingResultBody({ spaceId, vector }: { readonly spaceId: string; readonly vector: readonly number[] }) {
+  const { translate: t } = useAIStudioHost();
+  return <div className="studio-result__rich">
+    <p>{t('StudioResults.speakerEmbedding.dimensions', { count: vector.length })}</p>
+    <p className="studio-result__hint">{t('StudioResults.embedding.space', { spaceId })}</p>
+    <p className="studio-result__hint">{t('StudioResults.speakerEmbedding.boundary')}</p>
+  </div>;
 }

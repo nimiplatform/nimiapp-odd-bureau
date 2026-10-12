@@ -28,6 +28,7 @@ export {
   defineStudioParameters,
   type StudioParameterContract,
   type StudioParameterPresentation,
+  type StudioRecordedParameterInput,
   type StudioParameterRouteMatrix,
   type StudioParameterRouteState,
   type StudioParameterState,
@@ -49,8 +50,10 @@ export {
   type StudioParameterTranslate,
 } from './parameter-fields.js';
 export {
+  STUDIO_AI_CONFIG_CHANGED_EVENT,
   findStudioCapabilityIntent,
   loadStudioAIConfig,
+  notifyStudioAIConfigChanged,
   requireStudioAIConfigOwner,
   studioCloudIntentHasExactTarget,
   subscribeStudioAIConfigRefresh,
@@ -63,10 +66,7 @@ export {
 } from './run-target.js';
 export {
   DEFAULT_AI_STUDIO_HISTORY_PANEL_PREFERENCES,
-  STUDIO_HISTORY_LIMIT_BYTES,
-  STUDIO_HISTORY_LIMIT_PER_CAPABILITY,
-  STUDIO_HISTORY_LIMIT_TOTAL_RECORDS,
-  boundStudioRunHistoryWithRecord,
+  appendStudioRunHistoryRecord,
   cleanupStudioHistoryArtifacts,
   clearStudioRunHistory,
   clearStudioHistoryWithPolicy,
@@ -77,6 +77,7 @@ export {
   removeStudioRunHistoryRecord,
   studioHistoryClearOutcomeTone,
   studioHistoryArtifactPaths,
+  studioHistoryDocumentPaths,
   studioHistoryFromRecords,
   type StudioHistoryPolicyMutationIssue,
   type StudioHistoryPolicyMutationOutcome,
@@ -140,12 +141,21 @@ export {
 export type {
   StudioCapabilityRunInput,
   StudioCapabilityRunResult,
+  StudioFaceSwap,
+  StudioFaceSwapInput,
+  StudioFaceSwapInputRole,
+  StudioJsonValue,
   StudioManagedArtifact,
   StudioNonSuccess,
   StudioNonSuccessDiagnostics,
   StudioNonSuccessReason,
   StudioRuntimeCapabilityDescriptor,
   StudioRuntimeInspection,
+  StudioSessionSummary,
+  StudioTextDecisionAnswer,
+  StudioTextDecisionProbability,
+  StudioTextExchangeItem,
+  StudioTextExchangeStep,
   StudioTrace,
   StudioTypedOutput,
   StudioTypedSuccess,
@@ -189,6 +199,7 @@ export {
   useAIStudioHost,
   type AIStudioHostPort,
   type StudioHostCommandResult,
+  type StudioTextExportResult,
 } from './host-context.js';
 export { SectionAITesting } from './section-ai-testing.js';
 export type { SectionAITestingProps, StudioAIConfigPanelRenderInput } from './section-ai-testing-surface.js';

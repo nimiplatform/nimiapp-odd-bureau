@@ -1,6 +1,6 @@
-import type { RuntimeVoiceCatalogRuntime } from '@nimiplatform/kit/features/generation/runtime';
+import { observeRuntimeSpeechSynthesize, observeRuntimeSpeechTranscribe, type RuntimeSpeechTranscribeResult, type RuntimeVoiceCatalogRuntime } from '@nimiplatform/kit/features/generation/runtime';
 import { buildNimiRuntimeScenarioJobIdentity } from '@nimiplatform/sdk/features/generation';
-import { runNimiRuntimeScenarioJob } from '@nimiplatform/sdk/runtime';
+import { runNimiRuntimeScenarioJob, observeNimiRuntimeScenarioJob, type NimiRuntimeScenarioJobResult } from '@nimiplatform/sdk/runtime';
 import {
   ExecutionMode,
   ScenarioType,
@@ -8,9 +8,12 @@ import {
   VoiceCreationSource,
 } from '@nimiplatform/sdk/runtime/generated';
 import type { StudioCapabilityRuntimeHandlers } from '../ai-studio-core/runtime-dispatcher.js';
+import { audioMimeTypeFromUrl, isHttpsUrl } from './audio-url.js';
+import { listLabVoiceAssets } from '../ai-studio-core/voice-assets.js';
 import {
-  createStudioScenarioJobClient,
+  createStudioScenarioJobClient, recoverStudioJobAction, adoptStudioJobArtifact,
   projectStudioArtifactRunnerResult,
+  managedStudioAssetPath,
   projectStudioRunnerNonSuccess,
   type StudioCapabilityRuntimeContext,
 } from '../ai-studio-core/runtime.js';
@@ -38,6 +41,14 @@ export const studioVoiceRuntimeHandlers: StudioCapabilityRuntimeHandlers = Objec
 });
 
 async function runSpeechSynthesize(context: StudioCapabilityRuntimeContext) {
+  const recovery = await recoverStudioJobAction(context, ScenarioType.SPEECH_SYNTHESIZE);
+  if (recovery) {
+    if (recovery.saved) return recovery.saved;
+    const result = await observeRuntimeSpeechSynthesize({ runtime: { ai: createStudioScenarioJobClient(context) }, jobId: recovery.jobId!,
+      signal: context.input.observationSignal, cancelSignal: context.input.signal, abortReason: context.host.abortReason,
+      onObservation: context.input.onObservation, onJobUpdate: context.input.onJobUpdate });
+    return projectStudioArtifactRunnerResult(context, result);
+  }
   if (!context.prompt) return inputRequired(context);
   const parameters = context.input.parameters as StudioSpeechSynthesizeParameters | undefined;
   const voiceRef = speechVoiceReference(parameters);
@@ -56,6 +67,8 @@ async function runSpeechSynthesize(context: StudioCapabilityRuntimeContext) {
     ...(parameters?.timingMode !== undefined ? { timingMode: parameters.timingMode } : {}),
     scenarioId: context.scenarioId,
     surfaceId: context.host.surfaceId,
+    observationSignal: context.input.observationSignal,
+    onObservation: context.input.onObservation,
     ...(context.input.signal ? {
       signal: context.input.signal,
       abortReason: context.host.abortReason,
@@ -65,6 +78,15 @@ async function runSpeechSynthesize(context: StudioCapabilityRuntimeContext) {
 }
 
 async function runSpeechTranscribe(context: StudioCapabilityRuntimeContext) {
+  const recovery = await recoverStudioJobAction(context, ScenarioType.SPEECH_TRANSCRIBE);
+  if (recovery) {
+    if (recovery.saved) return recovery.saved;
+    const result = await observeRuntimeSpeechTranscribe({ runtime: { ai: createStudioScenarioJobClient(context) }, jobId: recovery.jobId!,
+      timestamps: recovery.entry.details?.timestamps,
+      signal: context.input.observationSignal, cancelSignal: context.input.signal, abortReason: context.host.abortReason,
+      onObservation: context.input.onObservation, onJobUpdate: context.input.onJobUpdate });
+    return projectStudioTranscript(context, result);
+  }
   const parameters = context.input.parameters as StudioSpeechTranscribeParameters | undefined;
   if (!context.prompt && !parameters?.audioFile) return inputRequired(context);
   if (parameters?.audioFile && parameters.audioFile.sizeBytes > MAX_STUDIO_AUDIO_UPLOAD_BYTES) {
@@ -99,11 +121,17 @@ async function runSpeechTranscribe(context: StudioCapabilityRuntimeContext) {
     ...(parameters?.responseFormat !== undefined ? { responseFormat: parameters.responseFormat } : {}),
     scenarioId: context.scenarioId,
     surfaceId: context.host.surfaceId,
+    observationSignal: context.input.observationSignal,
+    onObservation: context.input.onObservation,
     ...(context.input.signal ? {
       signal: context.input.signal,
       abortReason: context.host.abortReason,
     } : {}),
   });
+  return projectStudioTranscript(context, result);
+}
+
+function projectStudioTranscript(context: StudioCapabilityRuntimeContext, result: RuntimeSpeechTranscribeResult) {
   if (result.ok === false) return projectStudioRunnerNonSuccess(context, result);
   return {
     ok: true as const,
@@ -116,12 +144,23 @@ async function runSpeechTranscribe(context: StudioCapabilityRuntimeContext) {
       jobId: result.output.jobId,
       jobState: result.output.jobStatus,
       artifactCount: result.output.artifactCount,
+      ...(result.output.transcription ? { transcription: result.output.transcription } : {}),
     },
     ...(result.trace?.traceId ? { trace: { traceId: result.trace.traceId } } : {}),
   };
 }
 
 async function runVoiceCreate(context: StudioCapabilityRuntimeContext) {
+  const recovery = await recoverStudioJobAction(context, ScenarioType.VOICE_CREATE);
+  if (recovery) {
+    if (recovery.saved) return recovery.saved;
+    const source = recovery.entry.details?.creationSource;
+    if (!source) throw new Error('Saved voice action is missing its creation source');
+    const result = await observeNimiRuntimeScenarioJob({ ai: createStudioScenarioJobClient(context), jobId: recovery.jobId!, scenarioType: ScenarioType.VOICE_CREATE,
+      signal: context.input.observationSignal, cancelSignal: context.input.signal, abortReason: context.host.abortReason,
+      onObservation: context.input.onObservation, onJobUpdate: context.input.onJobUpdate });
+    return projectVoiceCreation(context, result, source);
+  }
   const parameters = context.input.parameters as StudioVoiceCreateParameters | undefined;
   const creationSource = parameters?.creationSource ?? 'reference-audio';
   if (!context.prompt && !parameters?.referenceAudioFile) return inputRequired(context);
@@ -188,11 +227,17 @@ async function runVoiceCreate(context: StudioCapabilityRuntimeContext) {
       labels: { scenarioId: context.scenarioId, surfaceId: context.host.surfaceId },
       extensions: [],
     },
+    observationSignal: context.input.observationSignal,
+    onObservation: context.input.onObservation,
     ...(context.input.signal ? {
       signal: context.input.signal,
       abortReason: context.host.abortReason,
     } : {}),
   });
+  return projectVoiceCreation(context, terminalResult, creationSource);
+}
+
+async function projectVoiceCreation(context: StudioCapabilityRuntimeContext, terminalResult: NimiRuntimeScenarioJobResult, creationSource: 'reference-audio' | 'text-description') {
   const terminalJob = terminalResult.job;
   const resultAsset = terminalResult.asset;
   const voiceReference = terminalResult.voiceReference;
@@ -210,11 +255,24 @@ async function runVoiceCreate(context: StudioCapabilityRuntimeContext) {
   if (!returnedVoiceAssetId || returnedVoiceAssetId !== resultAsset.voiceAssetId) {
     throw new Error('Completed voice.create did not return an exact VoiceAsset reference.');
   }
-  const listed = await context.host.client.ai.voiceAssets.list({ pageSize: 100 });
-  const listedAsset = listed.assets.find((asset) => asset.voiceAssetId === resultAsset.voiceAssetId);
+  const listed = await listLabVoiceAssets(context.host.client.ai.voiceAssets);
+  const listedAsset = listed.find((asset) => asset.voiceAssetId === resultAsset.voiceAssetId);
   if (!listedAsset || listedAsset.status !== 'active' || listedAsset.creationSource !== creationSource) {
     throw new Error('Completed voice.create did not project its ACTIVE VoiceAsset through the protected owner catalog.');
   }
+  if (terminalResult.artifacts.length > 1) throw new Error('Voice creation returned multiple preview artifacts.');
+  const sourcePreview = terminalResult.artifacts[0];
+  let preview;
+  if (sourcePreview) {
+    if (!sourcePreview.artifactId || !sourcePreview.mimeType.startsWith('audio/') || Number(sourcePreview.sizeBytes) <= 0) throw new Error('Voice preview artifact metadata is invalid.');
+    const { asset: adopted } = await adoptStudioJobArtifact(context, sourcePreview, await managedStudioAssetPath(context.capability.id, terminalJob.jobId, 0));
+    if (adopted.mediaType !== sourcePreview.mimeType || adopted.sizeBytes !== Number(sourcePreview.sizeBytes)) {
+      await context.host.client.storage.assets.remove(adopted.relativePath);
+      throw new Error('Saved voice preview does not match its Runtime artifact.');
+    }
+    preview = { relativePath: adopted.relativePath, mediaType: adopted.mediaType, sizeBytes: adopted.sizeBytes, sha256: adopted.sha256, displayName: context.capability.label, previewSource: 'managed-asset' as const };
+  }
+  const expires = listedAsset.expiresAt;
   return {
     ok: true as const,
     capabilityId: context.capability.id,
@@ -227,6 +285,9 @@ async function runVoiceCreate(context: StudioCapabilityRuntimeContext) {
       voiceAssetId: listedAsset.voiceAssetId,
       creationSource: listedAsset.creationSource,
       assetStatus: listedAsset.status,
+      ...(preview ? { preview } : {}),
+      ...(expires ? { expiresAt: new Date(Number(expires.seconds) * 1000 + expires.nanos / 1e6).toISOString() } : {}),
+      ...(terminalJob.usage ? { inputTokens: Number(terminalJob.usage.inputTokens), outputTokens: Number(terminalJob.usage.outputTokens) } : {}),
       voiceReference: { kind: 'voice_asset_id' as const, voiceAssetId: resultAsset.voiceAssetId },
     },
     ...(terminalJob.traceId ? { trace: { traceId: terminalJob.traceId } } : {}),
@@ -315,31 +376,6 @@ function speechVoiceReference(parameters: StudioSpeechSynthesizeParameters | und
     return { kind: 'voice_asset_id' as const, voiceAssetId: parameters.voiceAssetId.trim() };
   }
   return undefined;
-}
-
-function isHttpsUrl(value: string): boolean {
-  try {
-    return new URL(value).protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
-function audioMimeTypeFromUrl(value: string): string | null {
-  try {
-    const url = new URL(value);
-    if (url.protocol !== 'https:') return null;
-    const extension = url.pathname.split('.').pop()?.toLowerCase();
-    if (extension === 'wav') return 'audio/wav';
-    if (extension === 'mp3') return 'audio/mpeg';
-    if (extension === 'm4a') return 'audio/mp4';
-    if (extension === 'ogg') return 'audio/ogg';
-    if (extension === 'webm') return 'audio/webm';
-    if (extension === 'flac') return 'audio/flac';
-    return null;
-  } catch {
-    return null;
-  }
 }
 
 function commaSeparatedTokens(value: string | undefined): string[] {

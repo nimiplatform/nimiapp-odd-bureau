@@ -1,11 +1,11 @@
 import { spawn } from 'node:child_process';
 import { copyFile, cp, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packager } from '@electron/packager';
 import { build } from 'esbuild';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
 const APP_EXECUTABLE_NAME = "nimiplatform-odd-bureau-shell";
 const APP_PRODUCT_NAME = "奇物局";
@@ -19,6 +19,31 @@ function resolveWindowsResourceVersion(appVersion) {
     throw new Error(`Windows production packaging requires App version core components in the 0..65535 range: ${appVersion}`);
   }
   return `${coreComponents.join('.')}.0`;
+}
+function rebaseLocalPackagePaths(value, sourceDir, targetDir) {
+  // Parsed pnpm documents retain complete locators in overrides, specifiers
+  // and resolutions. Reuse those exact strings in package/peer keys instead
+  // of guessing whether a parenthesis belongs to a path or a peer suffix.
+  const replacements = new Map();
+  const collect = (item) => {
+    if (typeof item === 'string' && /^file:[^\r\n]+\.(?:tgz|tar\.gz)$/u.test(item)) {
+      replacements.set(item, 'file:' + path.relative(targetDir, path.resolve(sourceDir, item.slice(5))).split(path.sep).join('/'));
+    } else if (Array.isArray(item)) item.forEach(collect);
+    else if (item && typeof item === 'object') Object.values(item).forEach(collect);
+  };
+  collect(value);
+  if (replacements.size === 0) return value;
+  const pattern = new RegExp([...replacements.keys()].sort((a, b) => b.length - a.length)
+    .map((locator) => locator.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')).join('|'), 'gu');
+  const rebase = (text) => text.replace(pattern, (locator) => replacements.get(locator));
+  const rewrite = (item) => {
+    if (typeof item === 'string') return rebase(item);
+    if (Array.isArray(item)) return item.map(rewrite);
+    if (item && typeof item === 'object') return Object.fromEntries(Object.entries(item)
+      .map(([key, child]) => [rebase(key), rewrite(child)]));
+    return item;
+  };
+  return rewrite(value);
 }
 const MACOS_BUILD = process.platform === 'darwin' && process.arch === 'arm64';
 const NATIVE_PLATFORM = MACOS_BUILD ? 'darwin' : 'win32';
@@ -52,7 +77,11 @@ const nativeEntry = requireFromKit.resolve(NATIVE_BINDING_PACKAGE);
 const nativePackageRoot = await findPackageRoot(nativeEntry, NATIVE_BINDING_PACKAGE);
 
 await rm(outputRoot, { recursive: true, force: true });
-const stagingRoot = await mkdtemp(path.join(tmpdir(), 'nimi-electron-packager-'));
+// Use the physical staging root: pnpm canonicalizes cwd before resolving relative tarballs.
+// Staging is this project's ignored work area, not OS temp; finally removes it.
+const stagingParent = path.join(appRoot, '.nimi', 'local', 'build');
+await mkdir(stagingParent, { recursive: true });
+const stagingRoot = await realpath(await mkdtemp(path.join(stagingParent, 'electron-')));
 const productionSourceRoot = path.join(stagingRoot, 'app');
 const packagerTempRoot = path.join(stagingRoot, 'packager');
 let packageCompleted = false;
@@ -76,7 +105,16 @@ try {
 
   await mkdir(path.join(productionSourceRoot, 'dist-electron'), { recursive: true });
   await copyFile(path.join(appRoot, 'package.json'), path.join(productionSourceRoot, 'package.json'));
-  await copyFile(path.join(appRoot, 'pnpm-lock.yaml'), path.join(productionSourceRoot, 'pnpm-lock.yaml'));
+  const dependencyLock = parseYaml(await readFile(path.join(appRoot, 'pnpm-lock.yaml'), 'utf8'));
+  await writeFile(path.join(productionSourceRoot, 'pnpm-lock.yaml'), stringifyYaml(rebaseLocalPackagePaths(dependencyLock, appRoot, productionSourceRoot)));
+  try {
+    const workspace = parseYaml(await readFile(path.join(appRoot, 'pnpm-workspace.yaml'), 'utf8'));
+    await writeFile(path.join(productionSourceRoot, 'pnpm-workspace.yaml'), stringifyYaml({ ...rebaseLocalPackagePaths(workspace, appRoot, productionSourceRoot), packages: ['.'] }));
+  } catch (cause) {
+    if (cause.code !== 'ENOENT') throw cause;
+    // Staging sits inside the project: keep pnpm from adopting an enclosing workspace.
+    await writeFile(path.join(productionSourceRoot, 'pnpm-workspace.yaml'), stringifyYaml({ packages: ['.'] }));
+  }
   await cp(path.join(appRoot, 'dist'), path.join(productionSourceRoot, 'dist'), { recursive: true, force: false });
   await copyFile(path.join(appRoot, 'dist-electron', 'main.js'), path.join(productionSourceRoot, 'dist-electron', 'main.js'));
   await copyFile(path.join(appRoot, 'dist-electron', 'preload.cjs'), path.join(productionSourceRoot, 'dist-electron', 'preload.cjs'));
@@ -87,9 +125,13 @@ try {
   delete productionManifest.devDependencies;
   await writeFile(productionManifestPath, `${JSON.stringify(productionManifest, null, 2)}\n`);
   await rm(path.join(productionSourceRoot, 'pnpm-lock.yaml'));
+  await rm(path.join(productionSourceRoot, 'pnpm-workspace.yaml'), { force: true });
 
-  const nativeDestination = path.join(productionSourceRoot, 'node_modules', ...NATIVE_BINDING_PACKAGE.split('/'));
-  await rm(nativeDestination, { recursive: true, force: true });
+  const installedNativePackage = path.join(productionSourceRoot, 'node_modules', ...NATIVE_BINDING_PACKAGE.split('/'));
+  const nativeDestination = MACOS_BUILD
+    ? path.join(stagingRoot, 'nimi-native', 'protected-local')
+    : installedNativePackage;
+  await rm(installedNativePackage, { recursive: true, force: true });
   await mkdir(path.dirname(nativeDestination), { recursive: true });
   await cp(nativePackageRoot, nativeDestination, { recursive: true, dereference: true, force: false });
   await mkdir(packagerTempRoot, { recursive: true });
@@ -107,7 +149,11 @@ try {
     out: outputRoot,
     tmpdir: packagerTempRoot,
     overwrite: false,
-    asar: false,
+    // Native add-ons and their shared libraries must remain accessible to the OS loader.
+    // asar matches absolute paths with matchBase; a slash-free pattern matches file names,
+    // because '**' does not cross the dot directories of this staging or the App's path.
+    asar: { unpack: '*.{node,dylib,dll}' },
+    ...(MACOS_BUILD ? { extraResource: [path.join(stagingRoot, 'nimi-native')] } : {}),
     prune: false,
     quiet: true,
     derefSymlinks: true,
@@ -115,10 +161,10 @@ try {
     // Runtime preserves these bytes; Nimi never signs installed third-party code.
     ...(MACOS_BUILD ? { osxSign: {
       identity: '-', identityValidation: false, preAutoEntitlements: false,
-      preEmbedProvisioningProfile: false, strictVerify: true,
+      preEmbedProvisioningProfile: false, strictVerify: true, continueOnError: false,
       optionsForFile: () => ({ entitlements: [], hardenedRuntime: false, timestamp: 'none' }),
     } } : {}),
-    afterInitialize: [async ({ buildPath }) => {
+    beforeAsar: [async ({ buildPath }) => {
       const packagedManifestPath = path.join(buildPath, 'package.json');
       const packagedManifest = JSON.parse(await readFile(packagedManifestPath, 'utf8'));
       packagedManifest.version = APP_VERSION;

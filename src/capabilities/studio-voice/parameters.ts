@@ -4,6 +4,7 @@ import {
   SUPPORTED_STUDIO_PARAMETER,
   defineStudioParameters,
 } from '../ai-studio-core/parameters.js';
+import { audioMimeTypeFromUrl, isHttpsUrl } from './audio-url.js';
 
 export type StudioSpeechSynthesizeParameters = {
   voiceKind?: 'preset' | 'asset';
@@ -49,39 +50,64 @@ export type StudioVoiceCreateParameters = {
 export const MAX_STUDIO_AUDIO_UPLOAD_BYTES = 32 * 1024 * 1024;
 export const MAX_STUDIO_VOICE_REFERENCE_AUDIO_BYTES = 20 * 1024 * 1024;
 
-const LOCAL_PRESET_CLOUD_CONFIGURABLE = Object.freeze({
-  local: { kind: 'fixed', value: 'preset' } as const,
-  cloud: SUPPORTED_STUDIO_PARAMETER,
-});
 const LOCAL_TEXT_CLOUD_CONFIGURABLE = Object.freeze({
   local: { kind: 'fixed', value: 'text' } as const,
   cloud: SUPPORTED_STUDIO_PARAMETER,
 });
 
+// Route-level availability does not promise support from every selected model.
+// Runtime validates the exact voice, format, language and timing request.
 export const studioSpeechSynthesizeParameters = defineStudioParameters<StudioSpeechSynthesizeParameters>({
   initial: () => ({}),
+  restoreRecordedParameters: (snapshot) => {
+    if (!snapshot) return null;
+    const strings = new Set(['voiceKind', 'voicePreset', 'voiceAssetId', 'language', 'audioFormat', 'emotion', 'timingMode']);
+    const numbers = new Set(['sampleRateHz', 'speed', 'pitch', 'volume']);
+    for (const [key, value] of Object.entries(snapshot)) {
+      if (strings.has(key)) { if (typeof value !== 'string') return null; }
+      else if (numbers.has(key)) { if (typeof value !== 'number' || !Number.isFinite(value)) return null; }
+      else return null;
+    }
+    if (snapshot.voiceKind !== undefined && snapshot.voiceKind !== 'preset' && snapshot.voiceKind !== 'asset') return null;
+    if (snapshot.timingMode !== undefined && !['unspecified', 'none', 'word', 'char'].includes(String(snapshot.timingMode))) return null;
+    return { ...snapshot } as StudioSpeechSynthesizeParameters;
+  },
   routeMatrix: {
-    voiceKind: LOCAL_PRESET_CLOUD_CONFIGURABLE,
+    voiceKind: LOCAL_AND_CLOUD_STUDIO_PARAMETER,
     voicePreset: LOCAL_AND_CLOUD_STUDIO_PARAMETER,
-    voiceAssetId: CLOUD_ONLY_STUDIO_PARAMETER,
-    language: CLOUD_ONLY_STUDIO_PARAMETER,
-    audioFormat: CLOUD_ONLY_STUDIO_PARAMETER,
+    voiceAssetId: LOCAL_AND_CLOUD_STUDIO_PARAMETER,
+    language: LOCAL_AND_CLOUD_STUDIO_PARAMETER,
+    audioFormat: LOCAL_AND_CLOUD_STUDIO_PARAMETER,
     sampleRateHz: CLOUD_ONLY_STUDIO_PARAMETER,
     speed: CLOUD_ONLY_STUDIO_PARAMETER,
     pitch: CLOUD_ONLY_STUDIO_PARAMETER,
     volume: CLOUD_ONLY_STUDIO_PARAMETER,
     emotion: CLOUD_ONLY_STUDIO_PARAMETER,
-    timingMode: CLOUD_ONLY_STUDIO_PARAMETER,
+    timingMode: LOCAL_AND_CLOUD_STUDIO_PARAMETER,
   },
 });
 
 export const studioSpeechTranscribeParameters = defineStudioParameters<StudioSpeechTranscribeParameters>({
   initial: () => ({}),
+  restoreRecordedParameters: (snapshot, _result, recordedPrompt) => {
+    // File history retains a label, not bytes. Only a saved HTTPS URL and
+    // its complete scalar request can be replayed without a new selection.
+    if (!snapshot || !recordedPrompt || !isHttpsUrl(recordedPrompt)) return null;
+    const strings = new Set(['mimeType', 'language', 'prompt', 'responseFormat']);
+    for (const [key, value] of Object.entries(snapshot)) {
+      if (strings.has(key)) { if (typeof value !== 'string') return null; }
+      else if (key === 'timestamps' || key === 'diarization') { if (typeof value !== 'boolean') return null; }
+      else if (key === 'speakerCount') { if (!Number.isSafeInteger(value) || Number(value) < 0 || Number(value) > 32) return null; }
+      else return null;
+    }
+    if (!String(snapshot.mimeType ?? '').trim() && !audioMimeTypeFromUrl(recordedPrompt)) return null;
+    return { ...snapshot } as StudioSpeechTranscribeParameters;
+  },
   routeMatrix: {
     audioFile: LOCAL_AND_CLOUD_STUDIO_PARAMETER,
     mimeType: LOCAL_AND_CLOUD_STUDIO_PARAMETER,
     language: LOCAL_AND_CLOUD_STUDIO_PARAMETER,
-    timestamps: CLOUD_ONLY_STUDIO_PARAMETER,
+    timestamps: LOCAL_AND_CLOUD_STUDIO_PARAMETER,
     diarization: CLOUD_ONLY_STUDIO_PARAMETER,
     speakerCount: CLOUD_ONLY_STUDIO_PARAMETER,
     prompt: CLOUD_ONLY_STUDIO_PARAMETER,

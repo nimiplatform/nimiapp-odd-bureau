@@ -2,12 +2,13 @@ import type { ComponentType } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import type { StudioParameterContract } from './parameters.js';
 import type { StudioParameterPanelProps } from './parameter-fields.js';
+import type { StudioRunHistoryRecord } from './history.js';
 
 // @nimi-authority: rule.nimi.platform.app-ecosystem.p-scaf-019c
 
 export type StudioControlId = 'tone' | 'length';
 export type StudioInputKind = 'prompt' | 'url' | 'none';
-export type StudioResultKind = 'text' | 'transcript' | 'embedding' | 'artifacts' | 'voice-asset' | 'voice-catalog' | 'vision-locate';
+export type StudioResultKind = 'text' | 'transcript' | 'speaker-embedding' | 'embedding' | 'artifacts' | 'voice-asset' | 'voice-catalog' | 'vision-locate' | 'text-annotation' | 'text-exchange' | 'text-decision' | 'session';
 
 export type CapabilityStudioProfile = {
   readonly studioTag: string;
@@ -26,6 +27,12 @@ export type CapabilityStudioProfile = {
   readonly footnoteKey: string;
   readonly statusLabelKey?: string;
   readonly pendingLabelKey?: string;
+  // The capability runs only when its parameter panel supplies the input
+  // (for example selected media) rather than the composer prompt.
+  readonly requiresParameterInput?: boolean;
+  // The composer text is itself the request input; it is sent without
+  // directive or context wrapping.
+  readonly rawPrompt?: boolean;
 };
 
 export type ScenarioPreset = {
@@ -56,6 +63,7 @@ export type StudioCapabilityRegistration<TCapabilityId extends string = string> 
   readonly runtimeMethod: string;
   readonly parameters: StudioParameterContract;
   readonly parameterPanel?: ComponentType<StudioParameterPanelProps>;
+  readonly historyActions?: ComponentType<{ readonly record: StudioRunHistoryRecord }>;
 };
 
 export type AIStudioModuleRegistration<

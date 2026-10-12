@@ -1,11 +1,13 @@
 import { isJsonObject } from '@nimiplatform/sdk/types';
+import { validateNimiLocalAppSpeechTranscript } from '@nimiplatform/sdk/app';
+import { isAudioSeparationRequest } from './audio-separation-request.js';
+import { studioResultAssetPaths, studioWorldInputSource } from './managed-result-references.js';
 
 import type { AIStudioHistoryPanelPreferences } from './workspace.js';
 import type { StudioRunHistory, StudioRunHistoryRecord } from './history.js';
 
-export const STUDIO_HISTORY_LIMIT_PER_CAPABILITY = 40;
-export const STUDIO_HISTORY_LIMIT_TOTAL_RECORDS = 160;
-export const STUDIO_HISTORY_LIMIT_BYTES = 240 * 1024;
+// Existing records may truthfully carry a previously truncated input preview.
+const STORED_INPUT_PREVIEW_MAX_BYTES = 16 * 1024;
 
 export const DEFAULT_AI_STUDIO_HISTORY_PANEL_PREFERENCES: AIStudioHistoryPanelPreferences = Object.freeze({
   collapsed: true,
@@ -36,7 +38,7 @@ function optionalNonNegativeNumber(value: unknown, path: string): void {
   if (value !== undefined) nonNegativeNumber(value, path);
 }
 
-function validateManagedArtifact(value: unknown, path: string): void {
+export function validateManagedArtifact(value: unknown, path: string): void {
   if (!isJsonObject(value)) historyError(path, 'requires an object');
   requiredString(value.relativePath, `${path}.relativePath`);
   optionalString(value.mediaType, `${path}.mediaType`);
@@ -45,9 +47,142 @@ function validateManagedArtifact(value: unknown, path: string): void {
   if (!/^sha256:[0-9a-f]{64}$/u.test(sha256)) historyError(`${path}.sha256`, 'requires a canonical SHA-256 digest');
   optionalString(value.displayName, `${path}.displayName`);
   if (value.previewSource !== 'managed-asset') historyError(`${path}.previewSource`, 'requires managed-asset');
+  if (value.speechAlignment !== undefined) {
+    const alignment = value.speechAlignment;
+    if (typeof value.mediaType !== 'string' || !value.mediaType.startsWith('audio/') || !isJsonObject(alignment) || typeof alignment.unit !== 'number' || ![1, 2].includes(alignment.unit) || !Array.isArray(alignment.tokens) || !alignment.tokens.length) historyError(path, 'requires typed audio alignment');
+    let start = 0, end = 0;
+    for (const token of alignment.tokens) {
+      if (!isJsonObject(token) || typeof token.token !== 'string' || token.token.length === 0 ||
+        typeof token.startMs !== 'string' || typeof token.endMs !== 'string' ||
+        !/^(0|[1-9]\d*)$/u.test(token.startMs) || !/^(0|[1-9]\d*)$/u.test(token.endMs)) historyError(path, 'has an invalid alignment token');
+      const nextStart = nonNegativeSafeInteger(Number(token.startMs), path), nextEnd = nonNegativeSafeInteger(Number(token.endMs), path);
+      if (nextStart < start || nextEnd < end || nextEnd < nextStart) historyError(path, 'has out-of-order alignment');
+      start = nextStart; end = nextEnd;
+    }
+  }
 }
 
-function validateHistoryResult(value: unknown, path: string): void {
+function boundedNonEmptyString(value: unknown, path: string, maxLength: number): string {
+  if (typeof value !== 'string' || !value || value.length > maxLength) historyError(path, 'requires a bounded non-empty string');
+  return value as string;
+}
+
+function optionalNonEmptyString(value: unknown, path: string, maxLength: number): void {
+  if (value !== undefined) boundedNonEmptyString(value, path, maxLength);
+}
+
+function nonNegativeSafeInteger(value: unknown, path: string): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) historyError(path, 'requires a non-negative safe integer');
+  return value as number;
+}
+
+function validTimestamp(value: unknown, path: string): void {
+  if (Number.isNaN(new Date(requiredString(value, path)).valueOf())) historyError(path, 'requires a valid timestamp');
+}
+
+function validateHistoryJson(value: unknown, path: string, depth = 0): void {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
+  if (typeof value === 'number' && Number.isFinite(value)) return;
+  if (depth > 32) historyError(path, 'exceeds the JSON depth bound');
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) => validateHistoryJson(entry, `${path}[${index}]`, depth + 1));
+    return;
+  }
+  if (!isJsonObject(value)) historyError(path, 'requires JSON data');
+  for (const [key, entry] of Object.entries(value)) validateHistoryJson(entry, `${path}.${key}`, depth + 1);
+}
+
+export function validateFaceSwapHistory(value: unknown, path: string): void {
+  if (!isJsonObject(value) || !Array.isArray(value.inputs) || value.inputs.length !== 2) historyError(path, 'requires one reference and one target input');
+  const roles = new Set<string>();
+  for (const [index, input] of value.inputs.entries()) {
+    const inputPath = `${path}.inputs[${index}]`;
+    if (!isJsonObject(input) || !['reference-image', 'target-image', 'target-video'].includes(String(input.role)) || roles.has(String(input.role))) {
+      historyError(inputPath, 'has an invalid or duplicate role');
+    }
+    roles.add(String(input.role));
+    boundedNonEmptyString(input.name, `${inputPath}.name`, 255);
+    boundedNonEmptyString(input.mediaType, `${inputPath}.mediaType`, 255);
+    nonNegativeSafeInteger(input.sizeBytes, `${inputPath}.sizeBytes`);
+    if (!/^sha256:[0-9a-f]{64}$/u.test(requiredString(input.sha256, `${inputPath}.sha256`))) historyError(`${inputPath}.sha256`, 'requires a canonical SHA-256 digest');
+  }
+  const video = roles.has('target-video');
+  if (!roles.has('reference-image') || video === roles.has('target-image')) historyError(path, 'requires exactly one reference image and one target');
+  if (video !== (value.noFacePolicy !== undefined)) historyError(`${path}.noFacePolicy`, 'must be present exactly for a video target');
+  if (value.noFacePolicy !== undefined && value.noFacePolicy !== 'fail' && value.noFacePolicy !== 'preserve-frame') historyError(`${path}.noFacePolicy`, 'is invalid');
+  if (value.video !== undefined) {
+    const summary = value.video;
+    if (!video || !isJsonObject(summary)) historyError(`${path}.video`, 'requires a video target summary');
+    const total = nonNegativeSafeInteger(summary.totalFrames, `${path}.video.totalFrames`);
+    const transformed = nonNegativeSafeInteger(summary.transformedFrames, `${path}.video.transformedFrames`);
+    const preserved = nonNegativeSafeInteger(summary.preservedFrames, `${path}.video.preservedFrames`);
+    nonNegativeSafeInteger(summary.durationUs, `${path}.video.durationUs`);
+    if (total !== transformed + preserved || ![24, 25, 30].includes(Number(summary.frameRate)) || typeof summary.audioPreserved !== 'boolean') {
+      historyError(`${path}.video`, 'has inconsistent video facts');
+    }
+  }
+}
+
+function validateTextExchangeItem(value: unknown, path: string): void {
+  if (!isJsonObject(value)) historyError(path, 'requires an object');
+  if (value.type === 'text' || value.type === 'reasoning-summary') {
+    requiredString(value.text, `${path}.text`);
+    return;
+  }
+  if (value.type === 'reasoning-continuity') {
+    requiredString(value.carrierKind, `${path}.carrierKind`);
+    nonNegativeSafeInteger(value.version, `${path}.version`);
+    nonNegativeSafeInteger(value.payloadBytes, `${path}.payloadBytes`);
+    return;
+  }
+  if (value.type === 'tool-call' || value.type === 'tool-result') {
+    boundedNonEmptyString(value.toolCallId, `${path}.toolCallId`, 128);
+    boundedNonEmptyString(value.toolName, `${path}.toolName`, 128);
+    validateHistoryJson(value.type === 'tool-call' ? value.arguments : value.result, `${path}.${value.type === 'tool-call' ? 'arguments' : 'result'}`);
+    if (value.type === 'tool-result' && typeof value.isError !== 'boolean') historyError(`${path}.isError`, 'requires a boolean');
+    return;
+  }
+  historyError(`${path}.type`, 'has an unsupported value');
+}
+
+function decisionProbability(value: unknown, path: string): void {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) historyError(path, 'requires a probability from 0 to 1');
+}
+
+// Answers keep submitted order; a choice keeps every submitted candidate once
+// and selects one of them.
+function validateTextDecisionAnswers(value: unknown, questionCount: number, path: string): void {
+  if (!Array.isArray(value) || value.length !== questionCount) historyError(path, 'requires one answer per question');
+  const questionIds = new Set<string>();
+  value.forEach((answer, index) => {
+    const answerPath = `${path}[${index}]`;
+    if (!isJsonObject(answer)) historyError(answerPath, 'requires an object');
+    const questionId = boundedNonEmptyString(answer.questionId, `${answerPath}.questionId`, 64);
+    if (questionIds.has(questionId)) historyError(`${answerPath}.questionId`, 'is repeated');
+    questionIds.add(questionId);
+    if (answer.kind === 'boolean') {
+      decisionProbability(answer.trueProbability, `${answerPath}.trueProbability`);
+      return;
+    }
+    if (answer.kind !== 'choice') historyError(`${answerPath}.kind`, 'has an unsupported value');
+    if (!Array.isArray(answer.probabilities) || answer.probabilities.length < 2 || answer.probabilities.length > 255) {
+      historyError(`${answerPath}.probabilities`, 'requires 2 to 255 candidates');
+    }
+    const candidateIds = new Set<string>();
+    answer.probabilities.forEach((entry, position) => {
+      const entryPath = `${answerPath}.probabilities[${position}]`;
+      if (!isJsonObject(entry)) historyError(entryPath, 'requires an object');
+      const candidateId = boundedNonEmptyString(entry.candidateId, `${entryPath}.candidateId`, 64);
+      if (candidateIds.has(candidateId)) historyError(`${entryPath}.candidateId`, 'is repeated');
+      candidateIds.add(candidateId);
+      decisionProbability(entry.probability, `${entryPath}.probability`);
+    });
+    const selected = boundedNonEmptyString(answer.selectedCandidateId, `${answerPath}.selectedCandidateId`, 64);
+    if (!candidateIds.has(selected)) historyError(`${answerPath}.selectedCandidateId`, 'is not one of its candidates');
+  });
+}
+
+export function validateStudioHistoryResult(value: unknown, path: string): void {
   if (!isJsonObject(value) || typeof value.ok !== 'boolean') historyError(path, 'requires a discriminated result object');
   const kind = requiredString(value.kind, `${path}.kind`);
   requiredString(value.summary, `${path}.summary`);
@@ -59,6 +194,7 @@ function validateHistoryResult(value: unknown, path: string): void {
     requiredString(value.message, `${path}.message`);
     requiredString(value.actionHint, `${path}.actionHint`);
     optionalString(value.missingSurface, `${path}.missingSurface`);
+    optionalNonEmptyString(value.jobId, `${path}.jobId`, 128);
     if (value.diagnostics !== undefined) {
       if (!isJsonObject(value.diagnostics)) historyError(`${path}.diagnostics`, 'requires an object');
       const reasonCode = requiredString(value.diagnostics.reasonCode, `${path}.diagnostics.reasonCode`);
@@ -87,6 +223,10 @@ function validateHistoryResult(value: unknown, path: string): void {
   optionalString(value.traceId, `${path}.traceId`);
   if (kind === 'vision-locate') {
     requiredString(value.jobId, `${path}.jobId`);
+    if (value.sourceImage !== undefined) {
+      validateManagedArtifact(value.sourceImage, `${path}.sourceImage`);
+      if (!isJsonObject(value.sourceImage) || !['image/png','image/jpeg','image/webp','image/gif'].includes(String(value.sourceImage.mediaType))) historyError(`${path}.sourceImage`, 'requires the saved input image');
+    }
     const result = value.result;
     if (result === undefined) return;
     if (!isJsonObject(result) || typeof result.imageArtifactId !== 'string' || !result.imageArtifactId || !Number.isInteger(result.width) || (result.width as number) <= 0 || !Number.isInteger(result.height) || (result.height as number) <= 0 || !Array.isArray(result.locations)) historyError(path, 'requires a typed Locate result');
@@ -102,6 +242,12 @@ function validateHistoryResult(value: unknown, path: string): void {
   if (kind === 'text') {
     requiredString(value.body, `${path}.body`);
     nonNegativeNumber(value.charCount, `${path}.charCount`);
+    if (value.sourceImage !== undefined) {
+      validateManagedArtifact(value.sourceImage, `${path}.sourceImage`);
+      if (!isJsonObject(value.sourceImage) || !['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'audio/wav', 'audio/mpeg', 'video/mp4'].includes(String(value.sourceImage.mediaType))) {
+        historyError(`${path}.sourceImage`, 'requires a saved input media artifact');
+      }
+    }
     requiredString(value.finishReason, `${path}.finishReason`);
     if (typeof value.streamed !== 'boolean') historyError(`${path}.streamed`, 'requires a boolean');
     optionalNonNegativeNumber(value.inputTokens, `${path}.inputTokens`);
@@ -109,16 +255,71 @@ function validateHistoryResult(value: unknown, path: string): void {
     optionalNonNegativeNumber(value.totalTokens, `${path}.totalTokens`);
     return;
   }
+  if (kind === 'speaker-embedding') {
+    requiredString(value.jobId, path + '.jobId');
+    requiredString(value.spaceId, path + '.spaceId');
+    if (!Array.isArray(value.vector) || !value.vector.length || value.vector.length > 4096 || value.vector.some(item => typeof item !== 'number' || !Number.isFinite(item))) historyError(path, 'requires the complete finite speaker vector');
+    return;
+  }
   if (kind === 'embedding') {
     nonNegativeNumber(value.vectorCount, `${path}.vectorCount`);
     nonNegativeNumber(value.dimensions, `${path}.dimensions`);
+    // Records saved before the embedding space was retained have no spaceId.
+    optionalNonEmptyString(value.spaceId, `${path}.spaceId`, 128);
     if (!Array.isArray(value.sample) || value.sample.some((entry) => typeof entry !== 'number' || !Number.isFinite(entry))) {
       historyError(`${path}.sample`, 'requires finite numbers');
     }
     optionalNonNegativeNumber(value.totalTokens, `${path}.totalTokens`);
     return;
   }
+  if (kind === 'text-annotation') {
+    requiredString(value.jobId, `${path}.jobId`);
+    requiredString(value.jobState, `${path}.jobState`);
+    if (!/^[a-z-]{2,16}$/u.test(requiredString(value.language, `${path}.language`))) historyError(`${path}.language`, 'is invalid');
+    nonNegativeSafeInteger(value.documentCount, `${path}.documentCount`);
+    nonNegativeSafeInteger(value.tokenCount, `${path}.tokenCount`);
+    nonNegativeSafeInteger(value.sentenceCount, `${path}.sentenceCount`);
+    validateManagedArtifact(value.document, `${path}.document`);
+    if (!isJsonObject(value.document) || value.document.mediaType !== 'application/json') historyError(`${path}.document`, 'requires a saved JSON document');
+    return;
+  }
+  if (kind === 'text-exchange') {
+    if (value.scenario !== 'tool-call' && value.scenario !== 'structured-output') historyError(`${path}.scenario`, 'is invalid');
+    if (!Array.isArray(value.steps) || value.steps.length === 0 || value.steps.length > 16) historyError(`${path}.steps`, 'requires 1 to 16 steps');
+    value.steps.forEach((step, index) => {
+      const stepPath = `${path}.steps[${index}]`;
+      if (!isJsonObject(step) || (step.origin !== 'model' && step.origin !== 'app') || !Array.isArray(step.items) || step.items.length === 0 || step.items.length > 64) {
+        historyError(stepPath, 'requires an origin and 1 to 64 items');
+      }
+      optionalString(step.finishReason, `${stepPath}.finishReason`);
+      optionalString(step.traceId, `${stepPath}.traceId`);
+      step.items.forEach((item, itemIndex) => validateTextExchangeItem(item, `${stepPath}.items[${itemIndex}]`));
+    });
+    requiredString(value.text, `${path}.text`);
+    if (value.structured !== undefined) validateHistoryJson(value.structured, `${path}.structured`);
+    return;
+  }
+  if (kind === 'text-decision') {
+    const questionCount = nonNegativeSafeInteger(value.questionCount, `${path}.questionCount`);
+    if (questionCount < 1 || questionCount > 64) historyError(`${path}.questionCount`, 'requires 1 to 64 questions');
+    if (value.answers !== undefined) validateTextDecisionAnswers(value.answers, questionCount, `${path}.answers`);
+    return;
+  }
+  if (kind === 'session') {
+    requiredString(value.capabilityContract, `${path}.capabilityContract`);
+    validTimestamp(value.startedAt, `${path}.startedAt`);
+    validTimestamp(value.endedAt, `${path}.endedAt`);
+    if (value.ending !== 'closed' && value.ending !== 'terminated') historyError(`${path}.ending`, 'is invalid');
+    requiredString(value.terminalReason, `${path}.terminalReason`);
+    if (!isJsonObject(value.observed) || Object.keys(value.observed).length > 32) historyError(`${path}.observed`, 'requires at most 32 counters');
+    for (const [key, count] of Object.entries(value.observed)) {
+      if (!/^[a-z][a-z0-9-]{0,63}$/u.test(key)) historyError(`${path}.observed`, `has an invalid counter ${key}`);
+      nonNegativeSafeInteger(count, `${path}.observed.${key}`);
+    }
+    return;
+  }
   if (kind === 'artifacts') {
+    if (value.sourceImage !== undefined) validateManagedArtifact(value.sourceImage, `${path}.sourceImage`);
     requiredString(value.jobId, `${path}.jobId`);
     requiredString(value.jobState, `${path}.jobState`);
     nonNegativeNumber(value.artifactCount, `${path}.artifactCount`);
@@ -128,6 +329,144 @@ function validateHistoryResult(value: unknown, path: string): void {
       if (value.artifacts.length !== value.artifactCount) historyError(`${path}.artifacts`, 'must match artifactCount');
     }
     if (value.firstArtifact !== undefined) validateManagedArtifact(value.firstArtifact, `${path}.firstArtifact`);
+    if (value.faceSwap !== undefined) {
+      if (value.musicGeneration !== undefined || value.musicTranscription !== undefined || value.voiceConversion !== undefined || value.audioSeparation !== undefined) {
+        historyError(path, 'mixes face replacement with another result');
+      }
+      validateFaceSwapHistory(value.faceSwap, `${path}.faceSwap`);
+    }
+    if (value.musicTranscription !== undefined) {
+      const music = value.musicTranscription;
+      if (value.musicGeneration !== undefined || !isJsonObject(music) || !isJsonObject(music.sourceInfo)
+        || !isJsonObject(music.inputRange) || !Array.isArray(music.scores) || !Array.isArray(value.artifacts)
+        || music.origin !== 'transcribed-estimate' || !['unknown', 'complete', 'truncated'].includes(String(music.completeness))) historyError(path, 'requires complete transcription metadata');
+      validateManagedArtifact(music.sourceAudio, `${path}.sourceAudio`);
+      if (!isJsonObject(music.sourceAudio) || music.sourceAudio.mediaType !== 'audio/wav') historyError(path, 'requires saved canonical source audio');
+      const audio = music.sourceInfo;
+      for (const key of ['sampleRateHz', 'channels', 'frameCount', 'durationMs']) {
+        if (typeof audio[key] !== 'number' || !Number.isSafeInteger(audio[key])) historyError(path, 'has invalid transcription source facts');
+      }
+      if (Number(audio.sampleRateHz) < 8000 || Number(audio.sampleRateHz) > 96000 || ![1, 2].includes(Number(audio.channels))
+        || Number(audio.frameCount) < 1 || Number(audio.frameCount) > Number(audio.sampleRateHz) * 600
+        || audio.durationMs !== Math.floor(Number(audio.frameCount) * 1000 / Number(audio.sampleRateHz))) historyError(path, 'has inconsistent transcription source facts');
+      const range = music.inputRange;
+      if (!Number.isSafeInteger(range.startFrame) || !Number.isSafeInteger(range.endFrame) || Number(range.startFrame) < 0
+        || Number(range.endFrame) > Number(audio.frameCount) || Number(range.startFrame) >= Number(range.endFrame)) historyError(path, 'has an invalid transcription range');
+      const expected = new Map<string, string>(); const pairs = new Set<string>();
+      for (const score of music.scores) {
+        if (!isJsonObject(score) || typeof score.relativePath !== 'string' || !['abc', 'midi'].includes(String(score.format))
+          || !['vocal-melody', 'lead-sheet', 'full-arrangement', 'note-events'].includes(String(score.part))) historyError(path, 'has an invalid transcribed score');
+        const pair = `${score.format}:${score.part}`;
+        if (pairs.has(pair) || expected.has(score.relativePath)) historyError(path, 'duplicates a transcribed score');
+        pairs.add(pair); expected.set(score.relativePath, score.format === 'abc' ? 'text/vnd.abc' : 'audio/midi');
+      }
+      if (music.timelineRelativePath !== undefined) {
+        const timeline = requiredString(music.timelineRelativePath, `${path}.timelineRelativePath`);
+        if (expected.has(timeline)) historyError(path, 'duplicates its timeline');
+        expected.set(timeline, 'application/vnd.nimi.music-timeline+json');
+      }
+      if (!expected.size || value.artifacts.length !== expected.size) historyError(path, 'does not retain its complete transcription');
+      for (const artifact of value.artifacts) {
+        if (!isJsonObject(artifact) || typeof artifact.relativePath !== 'string' || expected.get(artifact.relativePath) !== artifact.mediaType) historyError(path, 'has mismatched transcription artifacts');
+        expected.delete(artifact.relativePath);
+      }
+    }
+    if (value.voiceConversion !== undefined) {
+      const voice = value.voiceConversion;
+      if (value.musicGeneration !== undefined || value.musicTranscription !== undefined || !isJsonObject(voice) || !isJsonObject(voice.sourceInfo)
+        || !isJsonObject(voice.inputRange) || !isJsonObject(voice.vocalInfo) || !isJsonObject(voice.vocal) || !Array.isArray(value.artifacts)
+        || !['EXACT', 'MODEL_FRAME_ROUNDING'].includes(String(voice.lengthRelation))) historyError(path, 'requires complete voice conversion metadata');
+      validateManagedArtifact(voice.sourceVocal, `${path}.sourceVocal`);
+      if (!isJsonObject(voice.sourceVocal) || voice.sourceVocal.mediaType !== 'audio/wav') historyError(path, 'requires saved canonical source vocal');
+      if (voice.targetVoice !== undefined) {
+        validateManagedArtifact(voice.targetVoice, `${path}.targetVoice`);
+        if (!isJsonObject(voice.targetVoice) || voice.targetVoice.mediaType !== 'audio/wav') historyError(path, 'requires saved canonical target voice');
+      }
+      const source = voice.sourceInfo;
+      const vocal = voice.vocalInfo;
+      for (const key of ['sampleRateHz', 'channels', 'frameCount', 'durationMs']) {
+        if (typeof source[key] !== 'number' || !Number.isSafeInteger(source[key])) historyError(path, 'has invalid voice conversion source facts');
+        if (typeof vocal[key] !== 'number' || !Number.isSafeInteger(vocal[key])) historyError(path, 'has invalid voice conversion vocal facts');
+      }
+      for (const audio of [source, vocal]) {
+        if (Number(audio.sampleRateHz) < 8000 || Number(audio.sampleRateHz) > 96000 || ![1, 2].includes(Number(audio.channels))
+          || Number(audio.frameCount) < 1 || Number(audio.frameCount) > Number(audio.sampleRateHz) * 600
+          || audio.durationMs !== Math.floor(Number(audio.frameCount) * 1000 / Number(audio.sampleRateHz))) historyError(path, 'has inconsistent voice conversion facts');
+      }
+      const range = voice.inputRange;
+      if (!Number.isSafeInteger(range.startFrame) || !Number.isSafeInteger(range.endFrame) || Number(range.startFrame) < 0
+        || Number(range.endFrame) > Number(source.frameCount) || Number(range.startFrame) >= Number(range.endFrame)) historyError(path, 'has an invalid voice conversion range');
+      const sourceRangeDurationMs = Math.floor((Number(range.endFrame) - Number(range.startFrame)) * 1000 / Number(source.sampleRateHz));
+      if (typeof voice.durationDeltaMs !== 'number' || !Number.isSafeInteger(voice.durationDeltaMs)
+        || voice.durationDeltaMs !== Number(vocal.durationMs) - sourceRangeDurationMs) historyError(path, 'has an inconsistent voice conversion duration delta');
+      if (voice.lengthRelation === 'EXACT' && voice.durationDeltaMs !== 0) historyError(path, 'has an inconsistent voice conversion length relation');
+      if (voice.lengthRelation === 'MODEL_FRAME_ROUNDING' && Math.abs(Number(voice.durationDeltaMs)) >= 1000) historyError(path, 'has an inconsistent voice conversion length relation');
+      validateManagedArtifact(voice.vocal, `${path}.vocal`);
+      if (!isJsonObject(voice.vocal) || voice.vocal.mediaType !== 'audio/wav') historyError(path, 'does not retain its converted vocal');
+      const vocalPath = requiredString(voice.vocal.relativePath, `${path}.vocal.relativePath`);
+      if (value.artifacts.length !== 1
+        || !value.artifacts.some((artifact) => isJsonObject(artifact) && artifact.relativePath === vocalPath && artifact.mediaType === 'audio/wav')) {
+        historyError(path, 'does not retain its converted vocal');
+      }
+    }
+    if (value.audioSeparation !== undefined) {
+      const separation = value.audioSeparation;
+      if (value.musicGeneration !== undefined || value.musicTranscription !== undefined || value.voiceConversion !== undefined
+        || !isJsonObject(separation) || !isJsonObject(separation.vocals) || !isJsonObject(separation.background) || !Array.isArray(value.artifacts)) {
+        historyError(path, 'requires complete audio separation metadata');
+      }
+      if (separation.request !== undefined && !isAudioSeparationRequest(separation.request)) historyError(path, 'has an invalid separation request');
+      validateManagedArtifact(separation.sourceAudio, `${path}.sourceAudio`);
+      if (!isJsonObject(separation.sourceAudio) || separation.sourceAudio.mediaType !== 'audio/wav') historyError(path, 'requires saved canonical source audio');
+      validateManagedArtifact(separation.vocals, `${path}.vocals`);
+      validateManagedArtifact(separation.background, `${path}.background`);
+      if (!isJsonObject(separation.vocals) || separation.vocals.mediaType !== 'audio/wav'
+        || !isJsonObject(separation.background) || separation.background.mediaType !== 'audio/wav') historyError(path, 'does not retain its separation stems');
+      const vocalsPath = requiredString(separation.vocals.relativePath, `${path}.vocals.relativePath`);
+      const backgroundPath = requiredString(separation.background.relativePath, `${path}.background.relativePath`);
+      if (vocalsPath === backgroundPath) historyError(path, 'has identical vocal and background stems');
+      const parts = separation.instrumentParts === undefined ? [] : separation.instrumentParts;
+      if (!Array.isArray(parts) || parts.length > 3) historyError(path, 'has invalid instrument parts');
+      const expected = new Map<string, string>([[vocalsPath, 'audio/wav'], [backgroundPath, 'audio/wav']]);
+      const kinds = new Set<string>();
+      for (const part of parts) {
+        if (!isJsonObject(part) || !['DRUMS', 'BASS', 'OTHER'].includes(String(part.kind)) || kinds.has(String(part.kind))) {
+          historyError(path, 'has an invalid instrument part');
+        }
+        kinds.add(String(part.kind));
+        validateManagedArtifact(part.artifact, `${path}.instrumentParts.artifact`);
+        if (!isJsonObject(part.artifact) || part.artifact.mediaType !== 'audio/wav') historyError(path, 'does not retain its instrument stem');
+        const partPath = requiredString(part.artifact.relativePath, `${path}.instrumentParts.artifact.relativePath`);
+        if (expected.has(partPath)) historyError(path, 'duplicates a separation stem');
+        expected.set(partPath, 'audio/wav');
+      }
+      if (value.artifacts.length !== expected.size) historyError(path, 'does not retain its complete separation');
+      for (const artifact of value.artifacts) {
+        if (!isJsonObject(artifact) || typeof artifact.relativePath !== 'string' || expected.get(artifact.relativePath) !== artifact.mediaType) {
+          historyError(path, 'has mismatched separation artifacts');
+        }
+        expected.delete(artifact.relativePath);
+      }
+    }
+    if (value.musicGeneration !== undefined) {
+      const music = value.musicGeneration;
+      if (!isJsonObject(music) || !isJsonObject(music.audioInfo) || !Array.isArray(value.artifacts)) historyError(path, 'requires complete music metadata');
+      const audio = music.audioInfo;
+      if (!['unknown', 'model-end', 'budget-limit'].includes(String(music.termination))) historyError(path, 'has an invalid music termination');
+      for (const key of ['sampleRateHz', 'channels', 'frameCount', 'durationMs']) {
+        if (typeof audio[key] !== 'number' || !Number.isSafeInteger(audio[key]) || Number(audio[key]) < 0) historyError(path, 'has invalid canonical audio facts');
+      }
+      if (Number(audio.sampleRateHz) < 8000 || Number(audio.sampleRateHz) > 96000 || ![1, 2].includes(Number(audio.channels))
+        || Number(audio.frameCount) < 1 || Number(audio.frameCount) > Number(audio.sampleRateHz) * 600
+        || audio.durationMs !== Math.floor(Number(audio.frameCount) * 1000 / Number(audio.sampleRateHz))) historyError(path, 'has inconsistent canonical audio facts');
+      if (music.actualSeed !== undefined && (typeof music.actualSeed !== 'number' || !Number.isSafeInteger(music.actualSeed) || music.actualSeed < 0 || music.actualSeed > 4294967295)) historyError(path, 'has an invalid music seed');
+      if (!value.artifacts.some((artifact) => isJsonObject(artifact) && artifact.relativePath === music.mixRelativePath && artifact.mediaType === 'audio/wav')) historyError(path, 'does not retain its mix');
+      if (music.generatedScore !== undefined) {
+        const score = music.generatedScore;
+        if (!isJsonObject(score) || score.format !== 'abc' || score.origin !== 'generated-plan' || typeof score.truncated !== 'boolean'
+          || !value.artifacts.some((artifact) => isJsonObject(artifact) && artifact.relativePath === score.relativePath && artifact.mediaType === 'text/vnd.abc')) historyError(path, 'does not retain its generated score');
+      }
+    }
     return;
   }
   if (kind === 'transcript') {
@@ -136,9 +475,21 @@ function validateHistoryResult(value: unknown, path: string): void {
     requiredString(value.jobId, `${path}.jobId`);
     requiredString(value.jobState, `${path}.jobState`);
     nonNegativeNumber(value.artifactCount, `${path}.artifactCount`);
+    if (value.transcription !== undefined) {
+      try {
+        const transcript = validateNimiLocalAppSpeechTranscript(value.transcription);
+        if (transcript.text !== value.body) historyError(`${path}.transcription`, 'does not match the displayed text');
+      } catch {
+        historyError(`${path}.transcription`, 'does not retain a valid typed transcript');
+      }
+    }
     return;
   }
   if (kind === 'voice-asset') {
+    if (value.preview !== undefined) validateManagedArtifact(value.preview, `${path}.preview`);
+    optionalString(value.expiresAt, `${path}.expiresAt`);
+    optionalNonNegativeNumber(value.inputTokens, `${path}.inputTokens`);
+    optionalNonNegativeNumber(value.outputTokens, `${path}.outputTokens`);
     requiredString(value.jobId, `${path}.jobId`);
     requiredString(value.jobState, `${path}.jobState`);
     requiredString(value.voiceAssetId, `${path}.voiceAssetId`);
@@ -160,7 +511,7 @@ function validateHistoryResult(value: unknown, path: string): void {
   historyError(`${path}.kind`, `has unsupported value ${kind}`);
 }
 
-function validateRunConfig(value: unknown, path: string): void {
+export function validateRunConfig(value: unknown, path: string): void {
   if (!isJsonObject(value) || !isJsonObject(value.target) || !isJsonObject(value.promptControls)) {
     historyError(path, 'requires target and promptControls objects');
   }
@@ -191,9 +542,20 @@ function parseHistoryRecord(value: unknown, path: string, capabilityId: string):
   requiredString(value.message, `${path}.message`);
   const createdAt = requiredString(value.createdAt, `${path}.createdAt`);
   if (Number.isNaN(new Date(createdAt).valueOf())) historyError(`${path}.createdAt`, 'requires a valid timestamp');
-  if (value.result !== undefined) validateHistoryResult(value.result, `${path}.result`);
+  if (value.result !== undefined) validateStudioHistoryResult(value.result, `${path}.result`);
   if (value.runConfig !== undefined) validateRunConfig(value.runConfig, `${path}.runConfig`);
+  if (value.inputTruncated !== undefined) {
+    if (value.inputTruncated !== true) historyError(`${path}.inputTruncated`, 'requires true when present');
+    const context = isJsonObject(value.runConfig) && isJsonObject(value.runConfig.promptControls) ? value.runConfig.promptControls.context : undefined;
+    for (const [field, text] of [['prompt', value.prompt], ['runConfig.promptControls.context', context]] as const) {
+      if (typeof text === 'string' && utf8ByteLength(text) > STORED_INPUT_PREVIEW_MAX_BYTES) historyError(`${path}.${field}`, 'exceeds the truncated input limit');
+    }
+  }
   return value as unknown as StudioRunHistoryRecord;
+}
+
+function utf8ByteLength(text: string): number {
+  return new TextEncoder().encode(text).byteLength;
 }
 
 export function parseStudioRunHistory(value: unknown): StudioRunHistory {
@@ -226,33 +588,11 @@ export function studioHistoryFromRecords(records: readonly StudioRunHistoryRecor
   return history;
 }
 
-export function boundStudioRunHistoryWithRecord(history: StudioRunHistory, record: StudioRunHistoryRecord): StudioRunHistory {
-  // History has a smaller JSON budget than a complete Runtime Locate result.
-  // Preserve the summary/Job reference without mutating the current full result.
-  let storedRecord = record;
-  if (record.result?.ok && record.result.kind === 'vision-locate' && record.result.result
-    && new TextEncoder().encode(JSON.stringify(studioHistoryFromRecords([record]))).byteLength > STUDIO_HISTORY_LIMIT_BYTES) {
-    const { result: _locations, ...reference } = record.result;
-    storedRecord = { ...record, result: reference };
-  }
-  const counts = new Map<string, number>();
-  const retained = [storedRecord, ...flattenStudioHistoryRecords(history).filter((existing) => existing.id !== record.id)]
-    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-    .filter((candidate) => {
-      const count = counts.get(candidate.capabilityId) ?? 0;
-      if (count >= STUDIO_HISTORY_LIMIT_PER_CAPABILITY) return false;
-      counts.set(candidate.capabilityId, count + 1);
-      return true;
-    })
-    .slice(0, STUDIO_HISTORY_LIMIT_TOTAL_RECORDS);
-  let next = studioHistoryFromRecords(retained);
-  while (new TextEncoder().encode(JSON.stringify(next)).byteLength > STUDIO_HISTORY_LIMIT_BYTES) {
-    if (retained.length <= 1) throw new Error('AI Studio history record exceeds the storage document limit.');
-    retained.pop();
-    next = studioHistoryFromRecords(retained);
-  }
-  if (!retained.some((candidate) => candidate.id === record.id)) throw new Error('AI Studio history could not retain the newly completed run.');
-  return next;
+// Saving a run never removes or shrinks another run. Storage splits complete
+// records across documents; only an explicit user action removes history.
+export function appendStudioRunHistoryRecord(history: StudioRunHistory, record: StudioRunHistoryRecord): StudioRunHistory {
+  return studioHistoryFromRecords([record, ...flattenStudioHistoryRecords(history).filter((existing) => existing.id !== record.id)]
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt)));
 }
 
 export function removeStudioRunHistoryRecord(history: StudioRunHistory, recordId: string): StudioRunHistory {
@@ -294,10 +634,18 @@ export type StudioHistoryMutationSubject = {
 };
 
 export function studioHistoryArtifactPaths(record: StudioRunHistoryRecord): string[] {
+  const params = record.runConfig?.target.params;
+  const source = record.capabilityId === 'world.generate' && params ? studioWorldInputSource(params) : undefined;
+  return [...new Set([...studioResultAssetPaths(record.result), ...(source ? [source.relativePath] : [])])];
+}
+
+export function studioHistoryDocumentPaths(record: StudioRunHistoryRecord): string[] {
   const result = record.result;
-  if (!result || result.ok === false || result.kind !== 'artifacts') return [];
-  const artifacts = result.artifacts?.length ? result.artifacts : result.firstArtifact ? [result.firstArtifact] : [];
-  return artifacts.map((artifact) => artifact.relativePath).filter(Boolean);
+  if (!result || result.ok === false) return [];
+  if (result.kind === 'voice-asset') return result.preview ? [result.preview.relativePath] : [];
+  if (result.kind === 'vision-locate') return result.sourceImage ? [result.sourceImage.relativePath] : [];
+  if (result.kind !== 'text-annotation') return [];
+  return result.document.relativePath ? [result.document.relativePath] : [];
 }
 
 export async function cleanupStudioHistoryArtifacts(input: {
@@ -369,12 +717,14 @@ export async function removeStudioHistoryWithPolicy<TProjection>(input: {
   readonly history: StudioRunHistory;
   readonly recordId: string;
 } & StudioHistoryMutationPolicyPort<TProjection>): Promise<StudioHistoryPolicyMutationOutcome<TProjection>> {
-  const removed = mutationSubjects(input, input.history).filter((subject) => subject.id === input.recordId);
+  const subjects = mutationSubjects(input, input.history);
+  const removed = subjects.filter((subject) => subject.id === input.recordId);
+  const retainedPaths = new Set(subjects.filter(subject => subject.id !== input.recordId).flatMap(subject => subject.artifactPaths));
   const currentProjection = await input.project(input.history);
   if (removed.length === 0) return { completed: 0, skipped: 1, failed: 0, projection: currentProjection, issues: [] };
   if (input.deleteAssets) {
     const cleanup = await cleanupStudioHistoryArtifacts({
-      relativePaths: removed.flatMap((subject) => subject.artifactPaths),
+      relativePaths: removed.flatMap((subject) => subject.artifactPaths).filter(path => !retainedPaths.has(path)),
       removeArtifact: input.removeArtifact,
       isNotFound: input.isNotFound,
     });
@@ -409,7 +759,8 @@ export async function clearStudioHistoryWithPolicy<TProjection>(input: {
   readonly history: StudioRunHistory;
   readonly capabilityId: string | null;
 } & StudioHistoryMutationPolicyPort<TProjection>): Promise<StudioHistoryPolicyMutationOutcome<TProjection>> {
-  const removed = mutationSubjects(input, input.history).filter((subject) => (
+  const subjects = mutationSubjects(input, input.history);
+  const removed = subjects.filter((subject) => (
     input.capabilityId === null || subject.capabilityId === input.capabilityId
   ));
   if (!input.deleteAssets) {
@@ -434,9 +785,11 @@ export async function clearStudioHistoryWithPolicy<TProjection>(input: {
   let skipped = 0;
   let failed = 0;
   const issues: StudioHistoryPolicyMutationIssue[] = [];
+  const committedIds = new Set<string>();
   for (const subject of removed) {
+    const retainedPaths = new Set(subjects.filter(other => other.id !== subject.id && !committedIds.has(other.id)).flatMap(other => other.artifactPaths));
     const cleanup = await cleanupStudioHistoryArtifacts({
-      relativePaths: subject.artifactPaths,
+      relativePaths: subject.artifactPaths.filter(path => !retainedPaths.has(path)),
       removeArtifact: input.removeArtifact,
       isNotFound: input.isNotFound,
     });
@@ -449,6 +802,7 @@ export async function clearStudioHistoryWithPolicy<TProjection>(input: {
     try {
       await input.commit(next, [subject]);
       history = next;
+      committedIds.add(subject.id);
       completed += 1;
     } catch (error) {
       failed += 1;

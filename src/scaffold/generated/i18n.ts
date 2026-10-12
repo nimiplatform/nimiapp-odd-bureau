@@ -6,7 +6,7 @@ const generatedI18n = i18next.createInstance();
 void generatedI18n.init({
   lng: generatedLocale,
   fallbackLng: 'en',
-  initImmediate: false,
+  initAsync: false,
   interpolation: { escapeValue: false },
   resources: {
     en: { translation: generatedAIStudioMessageBundles.en },

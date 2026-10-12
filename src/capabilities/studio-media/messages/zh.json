@@ -1,4 +1,107 @@
 {
+  "Transcription": {
+    "estimateLabel": "模型估计",
+    "running": "正在准备录音或估计谱面…",
+    "configureInputs": "请选择已就绪的音乐转谱配置，导入音频，并选择受支持的输出。",
+    "inputHint": "MP3、WAV 或 FLAC · 最长 {{seconds}} 秒，最大 {{mib}} MiB",
+    "fileInvalid": "请选择 MP3、WAV 或 FLAC，大小不得超过当前配置的限制。",
+    "source": "原始录音",
+    "chooseSource": "导入录音",
+    "part": "谱面内容",
+    "parts": {
+      "vocal-melody": "人声旋律",
+      "lead-sheet": "旋律与和弦简谱",
+      "full-arrangement": "完整编配",
+      "note-events": "音符估计"
+    },
+    "formats": "输出文件",
+    "timeline": "音乐事件时间线",
+    "start": "起点（秒，可留空）",
+    "end": "终点（秒，可留空）",
+    "rangeHint": "全部留空即处理整段录音。事件位置始终对应原始录音。",
+    "preparationHint": "提交前先解码音频。此时停止操作，会在解码结束后放弃启动任务。",
+    "result": "转谱估计结果",
+    "estimate": "这是模型估计，并非权威谱面。编辑或生成音乐前，请与原始录音对照。",
+    "completeness": {
+      "unknown": "模型未提供识别是否完整的信号。",
+      "complete": "引擎报告处理完整，音符准确性仍需核对。",
+      "truncated": "转谱结果存在截断。"
+    },
+    "range": "原始录音 {{start}}–{{end}} 秒 · 帧坐标基于 {{hz}} Hz",
+    "export": "导出选中文件",
+    "midiTimeBasis": "MIDI 时间从所选音频片段起算，该片段在原录音中从 {{start}} 秒开始；时间线保留原录音时间。",
+    "exportMidi": "导出 MIDI",
+    "showFile": "显示已保存文件",
+    "exported": "导出文件已保存在本 App，并在文件夹中显示：{{path}}"
+  },
+  "VoiceConvert": {
+    "running": "正在准备音频或转换人声…",
+    "configureInputs": "请选择已就绪的声音转换配置，导入源人声与目标声音，并确认变调设置。",
+    "inputHint": "MP3、WAV 或 FLAC · 源最长 {{sourceSeconds}} 秒 / {{sourceMib}} MiB · 目标最长 {{targetSeconds}} 秒 / {{targetMib}} MiB",
+    "fileInvalid": "请选择 MP3、WAV 或 FLAC，大小不得超过当前配置的限制。",
+    "source": "源人声",
+    "chooseSource": "导入源人声",
+    "sourceStart": "源起点（秒，可留空）",
+    "sourceEnd": "源终点（秒，可留空）",
+    "targetKind": "目标声音",
+    "targetKinds": {
+      "reference-audio": "参考音频",
+      "preset": "预置声音",
+      "voice-asset": "语音资产"
+    },
+    "target": "目标参考音频",
+    "chooseTarget": "导入参考音频",
+    "targetStart": "目标起点（秒，可留空）",
+    "targetEnd": "目标终点（秒，可留空）",
+    "presetVoiceId": "预置声音 ID",
+    "voiceAsset": "语音资产",
+    "selectVoiceAsset": "选择本地语音资产",
+    "noVoiceAssets": "没有本地语音资产",
+    "semitone": "变调（半音，可留空）",
+    "semitoneHint": "留空或填 0 即保持原调；系统绝不会自动估计调性。非零值表示在 -12 到 +12 半音之间显式移调。",
+    "semitoneInvalid": "请输入 -12 到 12 之间的整数半音移调，或留空保持原调。",
+    "sameInput": "源人声与目标声音参考必须是不同的录音。",
+    "rangeHint": "全部留空即处理整段录音。帧位置始终对应准备后的规范输入。",
+    "preparationHint": "提交前先将音频解码为规范 PCM。此时停止操作，会在解码结束后放弃启动任务。",
+    "result": "转换后的人声",
+    "lengthRelation": "长度关系：{{relation}} · {{delta}} 毫秒",
+    "length": {
+      "EXACT": "完全一致",
+      "MODEL_FRAME_ROUNDING": "模型帧对齐取整"
+    },
+    "sourceFacts": "源人声：{{hz}} Hz · {{channels}} 声道 · {{durationMs}} 毫秒",
+    "vocalFacts": "转换后人声：{{hz}} Hz · {{channels}} 声道 · {{durationMs}} 毫秒",
+    "range": "源范围 {{start}}–{{end}} 秒 · 帧坐标基于 {{hz}} Hz",
+    "derivation": "输入在提交前通过派生的规范 PCM 转换（仅解码）进行准备。本应用不做隐藏的混缩、声道变更或采样率转换，尾部差异按返回值如实显示。"
+  },
+  "AudioSeparate": {
+    "running": "正在准备音频或分离音轨…",
+    "configureInputs": "请选择已就绪的音频分离配置，并导入源录音。",
+    "inputHint": "MP3、WAV 或 FLAC · 一段待拆分人声与背景的录音",
+    "fileInvalid": "请选择非空的 MP3、WAV 或 FLAC 录音。",
+    "source": "源录音",
+    "chooseSource": "导入录音",
+    "start": "起点（秒，可留空）",
+    "end": "终点（秒，可留空）",
+    "rangeHint": "全部留空即处理整段录音。帧位置始终对应准备后的规范输入。",
+    "includeInstrumentParts": "同时返回器乐音轨（鼓、贝斯、其他）",
+    "instrumentPartsHint": "器乐音轨仅在勾选请求且模型真实产出时返回，绝不会用静音或替代音轨冒充。",
+    "preparationHint": "提交前先将音频解码为规范 PCM。此时停止操作，会在解码结束后放弃启动任务。",
+    "recoveryMissingJob": "这条分离记录在任务编号被记下之前就已产生，无法恢复。移除记录即可放弃它。",
+    "result": "分离后的音轨",
+    "processedRange": "处理区间：源录音 {{start}}–{{end}} 秒。各输出音轨的 0 秒对应源录音的 {{start}} 秒；源播放器保留整段录音。",
+    "processedRangeToEnd": "处理区间：源录音 {{start}} 秒至结尾。各输出音轨的 0 秒对应源录音的 {{start}} 秒；源播放器保留整段录音。",
+    "processedFullSource": "处理区间：整段源录音。各输出音轨从源录音起点开始。",
+    "processedRangeUnknown": "这条结果未记录处理区间，无法确认输出音轨在源录音中的起点。源播放器保留整段录音。",
+    "derivation": "源录音在提交前准备为规范 PCM。若其采样率或声道布局与所选实现的输入域不同，本应用会先请求一次显式派生转换，此处显示的源录音即为转换后的输入。不做隐藏的混缩或声道变更；各条音轨按返回值如实显示。",
+    "vocals": "人声",
+    "background": "背景",
+    "parts": {
+      "DRUMS": "鼓",
+      "BASS": "贝斯",
+      "OTHER": "其他器乐"
+    }
+  },
   "VisionLocate": {
     "chooseImage": "选择图片",
     "replaceImage": "更换图片",
@@ -9,15 +112,45 @@
     "selectModelAction": "在 Nimi Desktop 的“运行时 → 模型配置”中选择图像定位配置，然后重新定位。",
     "invalidInput": "图片或目标描述不符合定位要求。",
     "correctInput": "请使用一张能正常打开的静态 JPEG、PNG、WebP 或 GIF（不支持多帧图片），不超过 32 MiB、约 6700 万像素。填写非空的目标描述，UTF-8 编码不超过 8 KiB，然后重新定位。",
+    "geometryUnsupported": "当前图像定位模型不支持所选的结果形态。",
+    "chooseSupportedGeometry": "请在「结果形态」中选择「边界框」后重新定位，或在 App AI 配置中选择支持「定位点」的模型。",
     "historySummaryOnly": "此定位结果较大，历史仅保留摘要和任务编号。完整坐标请在当次运行中导出。",
     "stoppedBeforeSubmit": "定位请求已停止，尚未提交任务。",
-    "geometry": "结果形态", "box": "边界框", "point": "定位点", "localOnly": "使用本地图像定位，可通过下方配置入口选择模型。",
-    "inputRequired": "请附上一张静态图片，并描述要定位的目标。", "imageTooLarge": "请选择不超过 32 MiB 的静态图片。", "resultMissing": "Runtime 未返回完整的定位结果。",
-    "found": "找到 {{count}} 个匹配目标", "noMatch": "未找到匹配目标", "sourceImage": "本次任务使用的图片", "overlay": "任务图片上的定位结果", "target": "目标 {{index}}",
-    "previewUnavailable": "输入图片的预览已不可用。下方坐标仍对应记录中的原图。", "coordinates": "图片标识与坐标", "matches": "匹配目标", "queued": "正在排队等待定位…", "running": "正在加载模型或定位目标…"
+    "geometry": "结果形态",
+    "box": "边界框",
+    "point": "定位点",
+    "localOnly": "使用本地图像定位，可通过下方配置入口选择模型。",
+    "inputRequired": "请附上一张静态图片，并描述要定位的目标。",
+    "imageTooLarge": "请选择不超过 32 MiB 的静态图片。",
+    "resultMissing": "Runtime 未返回完整的定位结果。",
+    "found": "找到 {{count}} 个匹配目标",
+    "noMatch": "未找到匹配目标",
+    "sourceImage": "本次任务使用的图片",
+    "overlay": "任务图片上的定位结果",
+    "target": "目标 {{index}}",
+    "previewUnavailable": "输入图片的预览已不可用。下方坐标仍对应记录中的原图。",
+    "coordinates": "图片标识与坐标",
+    "matches": "匹配目标",
+    "queued": "正在排队等待定位…",
+    "running": "正在加载模型或定位目标…"
   },
   "Capabilities": {
-    "visionLocate": { "label": "图像定位", "summary": "描述单张图片中的物体或控件，获取边界框或定位点。" },
+    "voiceConvert": {
+      "label": "声音转换",
+      "summary": "把已有演唱转换为另一种声音，同时保留其旋律、歌词与时间轴。"
+    },
+    "musicTranscribe": {
+      "label": "音乐转谱",
+      "summary": "从已有录音估计谱面与音乐事件。"
+    },
+    "audioSeparate": {
+      "label": "音频分离",
+      "summary": "把录音拆分成人声与背景，可选返回真实器乐音轨。"
+    },
+    "visionLocate": {
+      "label": "图像定位",
+      "summary": "描述单张图片中的物体或控件，获取边界框或定位点。"
+    },
     "imageGenerate": {
       "label": "图像生成",
       "summary": "提示词 → image.generate 场景任务 → 类型化产物预览结果。"
@@ -33,7 +166,42 @@
   },
   "Studio": {
     "profiles": {
-      "visionLocate": { "inputTitle": "测试图像定位", "inputPlaceholder": "例如：右上角的搜索按钮，或桌上的红色杯子…", "primaryLabel": "定位目标", "primaryRunningLabel": "正在定位…", "emptyTitle": "定位图片中的物体或控件", "emptyHint": "选择一张静态图片，描述目标，再选择边界框或定位点。", "footnote": "坐标以应用方向后的完整原图为基准。" },
+      "voiceConvert": {
+        "inputTitle": "演唱人声转换",
+        "inputPlaceholder": "",
+        "primaryLabel": "开始转换",
+        "primaryRunningLabel": "正在准备或转换…",
+        "emptyTitle": "把演唱转换为另一种声音",
+        "emptyHint": "打开输入设置，导入源人声与目标声音，并确认变调设置。",
+        "footnote": "源人声、目标声音与转换结果会一起保存，便于对照。"
+      },
+      "musicTranscribe": {
+        "inputTitle": "录音转谱",
+        "inputPlaceholder": "",
+        "primaryLabel": "开始转谱",
+        "primaryRunningLabel": "正在准备或转谱…",
+        "emptyTitle": "从录音得到谱面草稿",
+        "emptyHint": "打开输入设置，导入录音，并选择谱面内容与输出文件。",
+        "footnote": "原始音频与转谱估计结果会一起保存，便于对照。"
+      },
+      "audioSeparate": {
+        "inputTitle": "人声与背景分离",
+        "inputPlaceholder": "",
+        "primaryLabel": "开始分离",
+        "primaryRunningLabel": "正在准备或分离…",
+        "emptyTitle": "把录音拆分成人声与背景",
+        "emptyHint": "打开输入设置，导入录音，并选择是否请求器乐音轨。",
+        "footnote": "源录音与返回的每条音轨会一起保存，便于对照。"
+      },
+      "visionLocate": {
+        "inputTitle": "测试图像定位",
+        "inputPlaceholder": "例如：右上角的搜索按钮，或桌上的红色杯子…",
+        "primaryLabel": "定位目标",
+        "primaryRunningLabel": "正在定位…",
+        "emptyTitle": "定位图片中的物体或控件",
+        "emptyHint": "选择一张静态图片，描述目标，再选择边界框或定位点。",
+        "footnote": "坐标以应用方向后的完整原图为基准。"
+      },
       "imageGenerate": {
         "inputTitle": "测试图像生成",
         "inputPlaceholder": "描述你希望 Runtime 渲染的图像…",
@@ -63,6 +231,8 @@
       }
     },
     "parameters": {
+      "videoModeFirstFrame": "单张首帧生成视频",
+      "videoFirstFrameRequired": "请先在参数中填写首帧图像的 HTTPS 链接，再生成视频。",
       "videoModeT2v": "文生视频",
       "videoModeReference": "单参考图",
       "chooseImageFile": "选择并上传图片",
@@ -70,6 +240,10 @@
       "uploadingImage": "正在上传图片…",
       "imageFileTooLarge": "图片文件必须非空且不超过 32 MiB。",
       "imageFileMimeUnsupported": "请选择 PNG、JPEG、WebP 或 GIF 图片。",
+      "cloudImageFileMimeUnsupported": "Cloud 文件参考需要 PNG 或 JPEG 图片。",
+      "cloudImageReferenceHint": "文件参考与网址参考二选一。Cloud 文件参考使用 PNG 或 JPEG，是否支持及完整请求大小限制由所选 Runtime 实现确认；不支持的请求会明确失败。",
+      "imageReferenceHint": "文件参考与网址参考二选一。Runtime 会校验所选实现及上传的图片。",
+      "imageReferenceExclusive": "请在参考图文件和网址中选择一种，再重新运行。",
       "fields": {
         "negativePrompt": "负向提示词",
         "count": "数量",
@@ -80,8 +254,9 @@
         "referenceImage": "参考图 URL",
         "mask": "蒙版 URL",
         "mode": "模式",
+        "firstFrameImageUrl": "首帧图像 HTTPS URL",
         "referenceArtifactId": "参考产物 ID",
-        "referenceImageFile": "本地参考图片",
+        "referenceImageFile": "参考图文件",
         "resolution": "分辨率",
         "frames": "帧数",
         "generateAudio": "生成音频",
@@ -97,5 +272,48 @@
         "lyrics": "歌词"
       }
     }
+  },
+  "Music": {
+    "loadingInputs": "正在读取音乐输入能力…",
+    "configureInputs": "请配置可用且提供输入能力说明的音乐资源。不会根据模型名称推断支持情况。",
+    "duration": "生成预算（秒，最多 {{max}}）",
+    "durationHint": "预算用于限制生成时长，不保证歌曲完整结束。",
+    "fixedClipDuration": "此模型的时长上限预算为 {{seconds}} 秒。留空或填写 {{seconds}}；生成后会测量实际片段时长。",
+    "lyricsUnsupported": "此模型只使用提示词。运行前请清空歌词草稿。",
+    "seed": "随机种子（可选，0–4294967295）",
+    "instrumental": "只生成器乐",
+    "score": "乐谱输入",
+    "scoreTooLarge": "乐谱为空，或超过当前资源的大小限制。",
+    "scoreIncomplete": "保存的乐谱未能完整读取，请重新导入。",
+    "importing": "正在导入…",
+    "importScore": "导入 ABC 乐谱",
+    "importedScore": "已导入 ABC 乐谱",
+    "clearScore": "从本次请求移除",
+    "melodyOnly": "仅旋律",
+    "melodyHarmony": "旋律与和声",
+    "scoreHint": "导入的乐谱会保留为应用资产。仅旋律模式要求在导入前去掉和弦符号和同时发声音符。",
+    "returnScore": "返回生成乐谱",
+    "terminationModelEnd": "模型已生成至结束点。",
+    "terminationBudget": "已达到生成预算，歌曲可能尚未结束。",
+    "terminationUnknown": "引擎未提供生成结束原因。",
+    "scoreTruncated": "生成乐谱已截断，复用前请检查。",
+    "recoveryMissing": "这次音乐创作已不在恢复记录中。",
+    "recoveryJobNotFound": "Runtime 当前未找到这次提交的任务。恢复不会重新生成；如果原提交可能仍在处理，请稍后再查询，否则可移除这条恢复记录。",
+    "recoveryTitle": "已保存和未完成的任务",
+    "recoveryHint": "查询原任务，不会重新生成。恢复成功后将可用结果保存到历史。任务及尚未保存的结果仅在保留期内可读取。移除此入口会保留已保存的历史和资产。",
+    "historyOwnerUnavailable": "结果未能保存到正式历史。请在工作区重新打开此能力，再重试恢复。",
+    "savedUnavailable": "结果文件不可用",
+    "recover": "恢复原任务",
+    "openSaved": "打开已保存结果",
+    "forgetRecord": "移除记录",
+    "recovering": "正在读取原任务并保存结果…",
+    "cancelJob": "取消任务",
+    "viewScore": "查看生成的 ABC",
+    "hideScore": "收起 ABC",
+    "exportScore": "导出 ABC 乐谱",
+    "generatedPlan": "ABC 格式的生成计划",
+    "recovered": "已保存到历史，可选择对应记录查看结果。",
+    "observationIssue": "暂时无法更新进度，正在继续查询原任务…",
+    "recoveryNeedsAttention": "恢复遇到问题"
   }
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { nimiToast } from '@nimiplatform/kit/ui';
 
 import {
@@ -6,6 +6,7 @@ import {
   StudioHistoryActionsContext,
   StudioHistoryLoadContext,
   StudioHistoryPanelContext,
+  StudioHistoryResultContext,
   type StudioCapabilityParameterStore,
   type StudioHistoryActions,
   type StudioHistoryLoadState,
@@ -34,7 +35,7 @@ export type AIStudioHistoryProjection = {
 };
 
 export type AIStudioHistoryPersistOutcome =
-  | { readonly ok: true; readonly projection: AIStudioHistoryProjection }
+  | { readonly ok: true; readonly projection: AIStudioHistoryProjection; readonly record?: StudioRunHistoryRecord }
   | {
       readonly ok: false;
       readonly message: string;
@@ -113,6 +114,7 @@ export type AIStudioWorkspaceController = {
     prompt: string,
     runConfig?: StudioRunConfigSnapshot,
   ) => Promise<StudioRunHistoryRecord>;
+  readonly appendHistoryRecord: (record: StudioRunHistoryRecord) => Promise<void>;
   readonly history: StudioRunHistory | null;
   readonly lastResult: StudioCapabilityRunResult | null;
   readonly historySelectionRequest: { readonly requestId: number; readonly record: StudioRunHistoryRecord } | null;
@@ -147,17 +149,52 @@ export function useAIStudioWorkspaceController({
   const [historyPanel, setHistoryPanel] = useState<AIStudioHistoryPanelPreferences>(
     historyRepository.loadPanelPreferences,
   );
+  const currentRepository = useRef(historyRepository);
+  currentRepository.current = historyRepository;
+  const active = useRef(true);
+  useEffect(() => {
+    active.current = true;
+    return () => { active.current = false; };
+  }, []);
 
   const refreshHistory = useCallback(async () => {
     try {
-      setProjection(await historyRepository.load());
+      const next = await historyRepository.load();
+      if (!active.current || currentRepository.current !== historyRepository) return;
+      setProjection(next);
       setHistoryIssue(null);
     } catch (error) {
+      if (!active.current || currentRepository.current !== historyRepository) return;
       setHistoryIssue({ kind: 'load', message: errorMessage(error, 'History load failed.') });
     }
   }, [historyRepository]);
 
   useEffect(() => { void refreshHistory(); }, [refreshHistory]);
+
+  // Integration workflows already own the actual run identity and privacy
+  // policy. Commit through this repository and update the mounted workbench.
+  const appendHistoryRecord = useCallback(async (record: StudioRunHistoryRecord) => {
+    if (!active.current || currentRepository.current !== historyRepository) return;
+    try {
+      const next = await historyRepository.appendRecord(record);
+      if (!active.current || currentRepository.current !== historyRepository) return;
+      setProjection(next);
+      setHistoryIssue((current) => {
+        if (!current || current.kind === 'load') return null;
+        const records = current.records.filter((pending) => pending.id !== record.id);
+        return records.length === 0 && current.cleanupPaths.length === 0 ? null : { ...current, records };
+      });
+    } catch (error) {
+      if (active.current && currentRepository.current === historyRepository) {
+        setHistoryIssue((current) => ({
+          kind: 'save', message: errorMessage(error, 'History persistence failed.'),
+          records: [...(current?.kind === 'save' ? current.records.filter((pending) => pending.id !== record.id) : []), record],
+          cleanupPaths: current?.kind === 'save' ? current.cleanupPaths : [],
+        }));
+      }
+      throw error;
+    }
+  }, [historyRepository]);
 
   const parameterStore = useMemo(() => ({
     state: parameters,
@@ -225,7 +262,7 @@ export function useAIStudioWorkspaceController({
     setLastResult(result);
     const identity = await historyRepository.nextIdentity();
     const status = historyRepository.statusForResult?.(result);
-    const record = createStudioRunHistoryRecord({
+    const record = result.recordedHistory ?? createStudioRunHistoryRecord({
       result,
       prompt,
       runId: identity.runId,
@@ -245,12 +282,14 @@ export function useAIStudioWorkspaceController({
       setProjection(outcome.projection);
       setHistoryIssue((current) => {
         if (!current || current.kind === 'load') return null;
-        const records = current.records.filter((pending) => pending.id !== record.id);
+        const records = current.records.filter((pending) => pending.id !== record.id
+          && !(pending.capabilityId === record.capabilityId && pending.result?.ok && record.result?.ok
+            && 'jobId' in pending.result && 'jobId' in record.result && pending.result.jobId === record.result.jobId));
         return records.length === 0 && current.cleanupPaths.length === 0
           ? null
           : { ...current, records };
       });
-      return record;
+      return outcome.record ?? record;
     }
     if (outcome.displayFailure) {
       const capability = registrations.find((item) => item.descriptor.id === result.capabilityId)?.descriptor;
@@ -331,6 +370,7 @@ export function useAIStudioWorkspaceController({
     historyActions,
     historyPanelState,
     handleResult,
+    appendHistoryRecord,
     history: projection?.runHistory ?? null,
     lastResult,
     historySelectionRequest,
@@ -354,6 +394,7 @@ export function AIStudioWorkspace({
       <StudioHistoryLoadContext.Provider value={controller.historyLoadState}>
         <StudioHistoryActionsContext.Provider value={controller.historyActions}>
           <StudioHistoryPanelContext.Provider value={controller.historyPanelState}>
+            <StudioHistoryResultContext.Provider value={controller.handleResult}>
             <SectionAITesting
               registration={registration}
               registrations={registrations}
@@ -369,6 +410,7 @@ export function AIStudioWorkspace({
               renderAIConfigPanel={renderAIConfigPanel}
               rootTestId={rootTestId}
             />
+            </StudioHistoryResultContext.Provider>
           </StudioHistoryPanelContext.Provider>
         </StudioHistoryActionsContext.Provider>
       </StudioHistoryLoadContext.Provider>

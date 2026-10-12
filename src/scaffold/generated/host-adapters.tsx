@@ -8,7 +8,7 @@ import {
   AIStudioHostProvider,
   AIStudioWorkspace,
   DEFAULT_AI_STUDIO_HISTORY_PANEL_PREFERENCES,
-  boundStudioRunHistoryWithRecord,
+  appendStudioRunHistoryRecord,
   cleanupStudioHistoryArtifacts,
   clearStudioHistoryWithPolicy,
   createStudioNonSuccess,
@@ -123,7 +123,7 @@ async function loadVerifiedHistory(): Promise<AIStudioHistoryProjection> {
 async function appendRecord(record: StudioRunHistoryRecord): Promise<AIStudioHistoryProjection> {
   return mutateHistory(async () => {
     const current = await loadRunHistory();
-    const next = boundStudioRunHistoryWithRecord(current, record);
+    const next = appendStudioRunHistoryRecord(current, record);
     return verifyHistoryProjection(await writeRunHistory(next));
   });
 }
@@ -133,6 +133,10 @@ async function persistHistory({ result, record }: { readonly result: Parameters<
     return { ok: true as const, projection: await appendRecord(record) };
   } catch (error) {
     const paths = studioHistoryArtifactPaths(record);
+    if (result.ok && result.output.kind === 'artifacts' && (result.output.musicGeneration || result.output.musicTranscription || result.output.voiceConversion)) {
+      // Music recovery already owns these assets; history is an additional index.
+      return { ok: false as const, message: error instanceof Error ? error.message : String(error), retryRecord: true, remainingCleanupPaths: [] };
+    }
     const cleanup = await cleanupArtifacts(paths);
     const message = error instanceof Error ? error.message : String(error || 'History persistence failed.');
     return {
@@ -221,14 +225,16 @@ async function savePromptDraft(key: Parameters<AIStudioHostPort['app']['commands
   return promptDraftStore;
 }
 
-function downloadBlob(filename: string, blob: Blob): void {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  queueMicrotask(() => URL.revokeObjectURL(url));
-}
+const exportText: AIStudioHostPort['app']['commands']['exportText'] = async ({ filename, body }) => {
+  try {
+    const assets = getNimiLocalAppClient().storage.assets;
+    const saved = await assets.write({ relativePath: `exports/${crypto.randomUUID()}/${filename}`,
+      body: new Blob([body], { type: 'text/plain' }), mediaType: 'text/plain', overwrite: false });
+    let revealed = false;
+    try { await assets.reveal(saved.relativePath); revealed = true; } catch { /* The file remains saved. */ }
+    return { ok: true, value: { filename, artifactPath: saved.relativePath, byteSize: saved.sizeBytes, revealed } };
+  } catch (error) { return { ok: false, error }; }
+};
 
 const RUN_STATUS_LABEL_KEYS: Readonly<Record<string, string>> = Object.freeze({
     ready: 'StudioShell.runStatusReady',
@@ -266,7 +272,7 @@ const hostValue: AIStudioHostPort = {
           return { ok: false, error };
         }
       },
-      exportText: async ({ filename, body }) => downloadBlob(filename, new Blob([body], { type: 'text/plain;charset=utf-8' })),
+      exportText,
     },
   },
   sdk: {
@@ -284,6 +290,7 @@ const hostValue: AIStudioHostPort = {
         createStudioNonSuccess(capability, reason, message, translate, diagnostics)
       ),
     }),
+    deleteLocalAppVoiceAsset: (voiceAssetId) => getNimiLocalAppClient().ai.voiceAssets.delete(voiceAssetId),
     async listLocalAppVoiceAssets() {
       const result = await getNimiLocalAppClient().ai.voiceAssets.list({ pageSize: 100, pageToken: '' });
       return result.assets.map((asset) => ({
@@ -293,7 +300,10 @@ const hostValue: AIStudioHostPort = {
       }));
     },
     uploadLocalAppArtifact: (input) => getNimiLocalAppClient().ai.artifacts.upload(input),
+    assets: getNimiLocalAppClient().storage.assets,
+    storage: getNimiLocalAppClient().storage,
     aiConfig: {
+      getSnapshot: () => getNimiLocalAppClient().aiConfig.get(),
       get: () => loadStudioAIConfig({
         get: async () => (await getNimiLocalAppClient().aiConfig.get()).config,
       }, appId),
@@ -311,9 +321,12 @@ const generatedCapabilityContracts = Object.freeze([
 function GeneratedAIConfigPanel({
   runtime,
   capabilityId,
+  onCommitted,
 }: {
   readonly runtime: StudioRuntimeInspection | null;
   readonly capabilityId: string;
+  // Absent when the App-owned ai-studio-core predates commit reporting.
+  readonly onCommitted?: () => void;
 }) {
   const [snapshot, setSnapshot] = useState<NimiAIConfigSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -355,7 +368,12 @@ function GeneratedAIConfigPanel({
           onOverwrite={async (input) => {
             const result = await getNimiLocalAppClient().aiConfig.overwrite(input);
             setSnapshot({ config: result.config, revision: result.revision, effectiveSelections: [] });
-            if (result.outcome === 'committed') void refresh();
+            // A commit re-reads every mounted consumer, this panel included,
+            // even when the drawer closed before the write finished.
+            if (result.outcome === 'committed') {
+              if (onCommitted) onCommitted();
+              else void refresh();
+            }
             return result;
           }}
           onOpenOwnerConfiguration={() => {

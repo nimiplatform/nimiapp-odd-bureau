@@ -1,15 +1,25 @@
+import { VoiceAssetActions } from './section-ai-testing-voice-asset-actions.js';
+import { MusicGenerationNotice } from './section-ai-testing-music-result.js';
+import { MusicTranscriptionNotice } from './section-ai-testing-transcription-result.js';
+import { VoiceConversionNotice } from './section-ai-testing-voice-conversion-result.js';
+import { AudioSeparationNotice } from './section-ai-testing-audio-separation-result.js';
+import { TextAnnotationResultView } from './section-ai-testing-annotation-result.js';
+import { SpeechTranscriptResultView } from './section-ai-testing-transcript-result.js';
+import { TextExchangeResultView } from './section-ai-testing-exchange-result.js';
+import { TextDecisionResultView } from './section-ai-testing-decision-result.js';
+import { FaceSwapNotice, SessionSummaryView } from './section-ai-testing-session-result.js';
 import { useEffect, useState, type ReactNode } from 'react';
-import { EmptyState, IconButton, StatusBadge, Surface, Tooltip } from '@nimiplatform/kit/ui';
-import { AlertTriangle, ChevronRight, Clock, Copy as CopyIcon, Download as DownloadIcon, FileText, FolderOpen, Loader2, RefreshCw, Sparkles, Square } from 'lucide-react';
+import { Button, EmptyState, IconButton, StatusBadge, Surface, Tooltip } from '@nimiplatform/kit/ui';
+import { AlertTriangle, ChevronRight, Clock, Copy as CopyIcon, Download as DownloadIcon, FileText, FolderOpen, Loader2, RefreshCw, SlidersHorizontal, Sparkles, Square } from 'lucide-react';
 import { useAIStudioHost } from './host-context.js';
 import { VisionLocateResultView } from './section-ai-testing-vision-result.js';
 import type { StudioCapabilityRunResult } from './runtime-types.js';
 import type { StudioCapabilityDescriptor, StudioCapabilityRegistration } from './module-registration.js';
 import { formatStudioRunTimestamp } from './history.js';
-import { studioNonSuccessReasonUserAction, studioNonSuccessReasonUserMessage, type StudioTranslate } from './non-success-presentation.js';
+import { isStoppedDirectCall, studioNonSuccessNeedsTargetReselection, studioNonSuccessReasonUserAction, studioNonSuccessReasonUserMessage, type StudioTranslate } from './non-success-presentation.js';
 import { countStudioWords } from './studio-directives.js';
 import type { CapabilityStatus } from './section-ai-testing-admission.js';
-import { ArtifactMediaResult, RuntimeDiagnosticsActions, formatTypedOutput, formatNonSuccessOutput, resultPlainText, TextStudioOutputBody } from './section-ai-testing-output.js';
+import { ArtifactMediaPreview, ArtifactMediaResult, EmbeddingResultBody, SpeakerEmbeddingResultBody, KnownJobNotice, RuntimeDiagnosticsActions, formatTypedOutput, formatNonSuccessOutput, resultPlainText, TextStudioOutputBody } from './section-ai-testing-output.js';
 
 // Readable body for a successful typed result (light surface), with structured
 // summaries for embedding / voice-catalog rather than raw JSON (which moves to
@@ -18,13 +28,28 @@ function ReadyBody({ result }: { result: StudioCapabilityRunResult & { ok: true 
   const { translate: t } = useAIStudioHost();
   const output = result.output;
   if (output.kind === 'vision-locate') return <VisionLocateResultView output={output} />;
-  if (output.kind === 'text' || output.kind === 'transcript') {
-    return <TextStudioOutputBody text={output.text} />;
+  if (output.kind === 'text') {
+    return <div className="studio-result__rich">
+      {output.sourceImage ? <ArtifactMediaPreview artifact={output.sourceImage} fallbackLabel={output.sourceImage.displayName || output.sourceImage.relativePath} /> : null}
+      <TextStudioOutputBody text={output.text} />
+    </div>;
   }
+  if (output.kind === 'transcript') {
+    return <SpeechTranscriptResultView text={output.text} transcription={output.transcription} />;
+  }
+  if (output.kind === 'text-annotation') return <TextAnnotationResultView output={output} />;
+  if (output.kind === 'text-exchange') return <TextExchangeResultView output={output} />;
+  if (output.kind === 'text-decision') return <TextDecisionResultView output={output} traceId={result.trace?.traceId} />;
+  if (output.kind === 'session') return <SessionSummaryView output={output} />;
   if (output.kind === 'artifacts') {
     return (
       <div className="studio-result__rich">
-        {output.artifacts.map((artifact, index) => (
+        <MusicGenerationNotice value={output.musicGeneration} />
+        <MusicTranscriptionNotice value={output.musicTranscription} recordId={output.jobId} />
+        <VoiceConversionNotice value={output.voiceConversion} />
+        <AudioSeparationNotice value={output.audioSeparation} />
+        <FaceSwapNotice value={output.faceSwap} />
+        {output.artifacts.filter((artifact) => !output.musicTranscription && !output.voiceConversion && !output.audioSeparation && artifact.relativePath !== output.musicGeneration?.generatedScore?.relativePath).map((artifact, index) => (
           <ArtifactMediaResult
             key={artifact.relativePath}
             artifact={artifact}
@@ -34,17 +59,17 @@ function ReadyBody({ result }: { result: StudioCapabilityRunResult & { ok: true 
       </div>
     );
   }
+  if (output.kind === 'speaker-embedding') return <SpeakerEmbeddingResultBody spaceId={output.spaceId} vector={output.vector} />;
   if (output.kind === 'embedding') {
-    return (
-      <div className="studio-result__rich">
-        <p className="studio-result__plain">{t('StudioShell.embeddingSuccess')}</p>
-      </div>
-    );
+    return <EmbeddingResultBody spaceId={output.spaceId} />;
   }
   if (output.kind === 'voice-asset') {
     return (
       <div className="studio-result__rich">
         <p className="studio-result__plain">{t('StudioShell.voiceAssetSuccess')}</p>
+        {output.preview ? <ArtifactMediaResult artifact={output.preview} fallbackLabel={output.jobId} /> : null}
+        {output.expiresAt ? <p>{t('StudioShell.voiceExpiry', { date: new Date(output.expiresAt).toLocaleString() })}</p> : null}
+        <VoiceAssetActions key={output.voiceAssetId} voiceAssetId={output.voiceAssetId} />
       </div>
     );
   }
@@ -188,6 +213,7 @@ export function StudioResult({
   onDownload,
   onRegenerate,
   onCancel,
+  onOpenIntentConfig,
 }: {
   result: StudioCapabilityRunResult | null;
   running: boolean;
@@ -205,6 +231,7 @@ export function StudioResult({
   onDownload: () => void;
   onRegenerate: () => void;
   onCancel?: () => void;
+  onOpenIntentConfig?: () => void;
 }) {
   const rendererHost = useAIStudioHost();
   const t = rendererHost.translate;
@@ -212,6 +239,7 @@ export function StudioResult({
   const profile = registration.profile;
   const ready = result?.ok ? result : null;
   const operationAborted = result && !result.ok && result.reason === 'operation-aborted' ? result : null;
+  const stoppedDirectCall = Boolean(operationAborted && isStoppedDirectCall(operationAborted.reason, capability.id));
   const canceled = result && !result.ok && result.reason === 'runtime-canceled' ? result : null;
   const timedOut = result && !result.ok && result.reason === 'runtime-timeout' ? result : null;
   const blocked = result && !result.ok
@@ -220,14 +248,14 @@ export function StudioResult({
     && result.reason !== 'runtime-timeout' ? result : null;
   const plainText = ready ? resultPlainText(ready, t) : '';
   const canExport = Boolean(ready && plainText);
-  const revealsManagedAsset = ready?.output.kind === 'artifacts';
+  const revealsManagedAsset = ready?.output.kind === 'artifacts' || ready?.output.kind === 'text-annotation';
   const displayIntentLabel = studioResultIntentLabel(result, capability, intentLabel, t);
   const [requestSettingsOpen, setRequestSettingsOpen] = useState(false);
   const hasRequestSettings = Boolean(requestSettings);
   const runTimeLabel = createdAt
     ? formatStudioRunTimestamp(createdAt, new Date(rendererHost.clock.now()))
     : running ? t('Studio.result.statRunning') : t('Studio.result.notRecorded');
-  const statusTitleKey = cancelRequested ? 'stopping' : running ? 'runtimeRunning' : operationAborted ? 'operationAborted' : canceled ? 'runtimeCanceled' : timedOut ? 'runtimeTimedOut' : blocked ? 'runtimeBlocked' : ready ? 'runtimeResult' : 'runtimeWaiting';
+  const statusTitleKey = cancelRequested ? 'stopping' : running ? 'runtimeRunning' : operationAborted ? (stoppedDirectCall ? 'stoppedDirectCall' : 'operationAborted') : canceled ? 'runtimeCanceled' : timedOut ? 'runtimeTimedOut' : blocked ? 'runtimeBlocked' : ready ? 'runtimeResult' : 'runtimeWaiting';
   const statusTitle = t(`Studio.result.status.${statusTitleKey}`);
   const statusTone = blocked || operationAborted || canceled || timedOut ? 'warning' : ready ? 'success' : running ? 'info' : 'neutral';
   useEffect(() => {
@@ -246,7 +274,7 @@ export function StudioResult({
     if (!result.ok) return [{
       label: t('Studio.result.statStatus'),
       value: t(result.reason === 'operation-aborted'
-        ? 'Studio.result.statStopped'
+        ? (isStoppedDirectCall(result.reason, capability.id) ? 'Studio.result.statStoppedDirect' : 'Studio.result.statStopped')
         : result.reason === 'runtime-canceled'
           ? 'Studio.result.statCanceled'
         : result.reason === 'runtime-timeout'
@@ -264,16 +292,42 @@ export function StudioResult({
     if (output.kind === 'transcript') {
       return [
         { label: t('Studio.result.statCharacters'), value: String(output.text.length) },
+        ...(output.transcription?.words.length ? [{ label: t('StudioResults.transcript.words'), value: String(output.transcription.words.length) }] : []),
         { label: t('Studio.result.statArtifacts'), value: String(output.artifactCount) },
       ];
     }
     if (output.kind === 'embedding') {
-      return [{ label: t('Studio.result.statResult'), value: t('Studio.result.statCreated') }];
+      return [
+        { label: t('Studio.result.statResult'), value: t('Studio.result.statCreated') },
+        ...(output.totalTokens !== undefined ? [{ label: t('Studio.result.statTokens'), value: String(output.totalTokens) }] : []),
+      ];
+    }
+    if (output.kind === 'text-annotation') {
+      return [
+        { label: t('StudioResults.stats.documents'), value: String(output.documentCount) },
+        { label: t('StudioResults.stats.tokens'), value: String(output.tokenCount) },
+        { label: t('StudioResults.stats.sentences'), value: String(output.sentenceCount) },
+      ];
+    }
+    if (output.kind === 'text-exchange') {
+      return [
+        { label: t('StudioResults.stats.steps'), value: String(output.steps.length) },
+        { label: t('Studio.result.statCharacters'), value: String(output.text.length) },
+      ];
+    }
+    if (output.kind === 'text-decision') {
+      return [{ label: t('StudioResults.stats.questions'), value: String(output.answers.length) }];
+    }
+    if (output.kind === 'session') {
+      return [{
+        label: t('Studio.result.statState'),
+        value: t(output.ending === 'closed' ? 'StudioResults.session.stateClosed' : 'StudioResults.session.stateTerminated'),
+      }];
     }
     if (output.kind === 'artifacts') {
       return [
         { label: t('Studio.result.statArtifacts'), value: String(output.artifactCount) },
-        { label: t('Studio.result.statState'), value: output.jobState === 'COMPLETED' ? t('Studio.result.statCompleted') : output.jobState || t('Studio.result.stateUnknown') },
+        { label: t('Studio.result.statState'), value: output.jobState.toUpperCase() === 'COMPLETED' ? t('Studio.result.statCompleted') : output.jobState || t('Studio.result.stateUnknown') },
       ];
     }
     if (output.kind === 'voice-asset') {
@@ -282,6 +336,7 @@ export function StudioResult({
         { label: t('Studio.result.statResult'), value: t(output.creationSource === 'text-description' ? 'Studio.result.createdFromDescription' : 'Studio.result.createdFromAudio') },
       ];
     }
+    if (output.kind === 'speaker-embedding') return [{ label: t('Studio.result.statResult'), value: String(output.vector.length) }];
     if (output.kind === 'vision-locate') return [{ label: t('VisionLocate.matches'), value: String(output.result.locations.length) }];
     return [
       { label: t('Studio.result.statVoices'), value: String(output.voiceCount) },
@@ -292,10 +347,14 @@ export function StudioResult({
   let metric = '-';
   if (ready) {
     const output = ready.output;
-    if (output.kind === 'text' || output.kind === 'transcript') metric = t('Studio.result.metricWords', { count: countStudioWords(output.text) });
+    if (output.kind === 'text' || output.kind === 'transcript' || output.kind === 'text-exchange') metric = t('Studio.result.metricWords', { count: countStudioWords(output.text) });
+    else if (output.kind === 'text-annotation') metric = String(output.tokenCount);
+    else if (output.kind === 'text-decision') metric = String(output.answers.length);
+    else if (output.kind === 'session') metric = output.terminalReason;
     else if (output.kind === 'artifacts') metric = t('Studio.result.metricArtifacts', { count: output.artifactCount });
     else if (output.kind === 'embedding') metric = t('Studio.result.metricCreated');
     else if (output.kind === 'voice-asset') metric = output.creationSource;
+    else if (output.kind === 'speaker-embedding') metric = String(output.vector.length);
     else if (output.kind === 'vision-locate') metric = String(output.result.locations.length);
     else metric = t('Studio.result.metricVoices', { count: output.voiceCount });
   }
@@ -310,6 +369,9 @@ export function StudioResult({
           <Loader2 size={15} aria-hidden="true" className="studio-spin" />
           <span>{cancelRequested
             ? t('Studio.result.pendingCancel')
+            : capability.id === 'music.transcribe' ? t('Transcription.running')
+            : capability.id === 'audio.voice.convert' ? t('VoiceConvert.running')
+            : capability.id === 'audio.separate' ? t('AudioSeparate.running')
             : capability.id === 'vision.locate' && jobStatus ? t(`VisionLocate.${jobStatus}`)
             : profile.pendingLabelKey
             ? t(profile.pendingLabelKey)
@@ -325,8 +387,9 @@ export function StudioResult({
           <Clock size={15} aria-hidden="true" />
           <span>{statusTitle}</span>
         </div>
-        <p>{studioNonSuccessReasonUserMessage(operationAborted.reason, t)}</p>
-        <p className="studio-result__hint">{studioNonSuccessReasonUserAction(operationAborted.reason, t)}</p>
+        <p>{studioNonSuccessReasonUserMessage(operationAborted.reason, t, capability.id)}</p>
+        <p className="studio-result__hint">{studioNonSuccessReasonUserAction(operationAborted.reason, t, capability.id)}</p>
+        <KnownJobNotice jobId={operationAborted.jobId} />
       </div>
     );
   } else if (canceled) {
@@ -338,6 +401,7 @@ export function StudioResult({
         </div>
         <p>{studioNonSuccessReasonUserMessage(canceled.reason, t)}</p>
         <p className="studio-result__hint">{studioNonSuccessReasonUserAction(canceled.reason, t)}</p>
+        <KnownJobNotice jobId={canceled.jobId} />
       </div>
     );
   } else if (timedOut) {
@@ -349,6 +413,7 @@ export function StudioResult({
         </div>
         <p>{studioNonSuccessReasonUserMessage(timedOut.reason, t)}</p>
         <p className="studio-result__hint">{studioNonSuccessReasonUserAction(timedOut.reason, t)}</p>
+        <KnownJobNotice jobId={timedOut.jobId} />
       </div>
     );
   } else if (blocked) {
@@ -358,8 +423,21 @@ export function StudioResult({
           <AlertTriangle size={15} aria-hidden="true" />
           <span>{t('StudioShell.generationFailed')}</span>
         </div>
-        <p>{studioNonSuccessReasonUserMessage(blocked.reason, t, blocked.capabilityId, blocked.diagnostics)}</p>
+        <p>{studioNonSuccessReasonUserMessage(blocked.reason, t, blocked.capabilityId, blocked.diagnostics, blocked.message)}</p>
         <p className="studio-result__hint">{studioNonSuccessReasonUserAction(blocked.reason, t, blocked.capabilityId, blocked.diagnostics)}</p>
+        {onOpenIntentConfig && studioNonSuccessNeedsTargetReselection(blocked.diagnostics) ? (
+          <Button
+            type="button"
+            tone="secondary"
+            size="sm"
+            className="studio-result__reselect"
+            leadingIcon={<SlidersHorizontal size={15} aria-hidden="true" />}
+            onClick={onOpenIntentConfig}
+          >
+            {t('NonSuccess.openAIConfig')}
+          </Button>
+        ) : null}
+        <KnownJobNotice jobId={blocked.jobId} />
       </div>
     );
   } else if (ready) {
@@ -419,7 +497,7 @@ export function StudioResult({
       <div className="studio-result__meta">
         <StatusBadge tone={statusTone} shape="soft" className="min-h-[30px] shrink-0 gap-[7px] px-3 text-sm font-[var(--nimi-type-page-title-weight)]">
           <Sparkles size={14} aria-hidden="true" />
-          <span>{t('Studio.result.runtimeChip')}</span>
+          <span>{t(capability.id === 'music.transcribe' ? 'Transcription.estimateLabel' : 'Studio.result.runtimeChip')}</span>
         </StatusBadge>
         <div className="studio-result__stats studio-result__stats--top" aria-label={t('Studio.result.generationMetrics')}>
           {stats.map((stat) => (

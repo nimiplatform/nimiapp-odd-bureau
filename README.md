@@ -5,7 +5,8 @@ This standalone App was generated as an identity-neutral base plus the explicitl
 Profile: `standalone`.
 
 - App-owned product code: `src/workbench-core/**`, selected `src/capabilities/**`, and subsequent product edits.
-- Scaffold-managed code: carrier/auth wiring, identity, manifests, build/release inputs, managed workflow and generated composition glue.
+- App-owned license: `LICENSE` starts as an MIT license naming the package author, or the App title when no author was given. Replace it with the App's own terms as needed and declare the matching `license` identifier in `package.json` before packaging; `sync` never rewrites it.
+- Scaffold-managed code: carrier/auth wiring, identity, manifests, build/release inputs, managed workflow, generated composition glue, and the template's own license notice in `licenses/nimi-app-template.txt`.
 - Package-owned projections: `.nimi/{config,contracts,methodology}/**`, materialized by the pinned local `nimicoding` package during `init`.
 
 `sync` refreshes scaffold-managed files without overwriting App-owned code. `check` is non-mutating. Changing identity, profile or direct feature selection requires a fresh scaffold.
@@ -30,13 +31,18 @@ Before production, the public GitHub repository must enable a protected `v*` tag
 
 `pnpm dev` selects the official Desktop-supervised Electron development Host. Direct renderer, Electron or Tauri launch does not create protected Nimi access.
 
-The default `windows-x86_64` build creates a fresh non-installer Electron directory at `dist-electron-package/nimiplatform-odd-bureau-shell-win32-x64/`, with the App-specific `nimiplatform-odd-bureau-shell.exe`, unpacked renderer files (`asar: false`), and relative renderer assets. Its production bundle rejects `--nimi-dev-renderer-url`. The protected native binding arrives only through Kit's optional dependency; do not add it directly to this App.
+The default `windows-x86_64` build creates a fresh non-installer Electron directory at `dist-electron-package/nimiplatform-odd-bureau-shell-win32-x64/`, with the App-specific `nimiplatform-odd-bureau-shell.exe`, ASAR-packaged JavaScript and renderer assets, and unpacked native add-ons plus shared libraries (`**/*.{node,dylib,dll}`). Their relative layout is preserved for the OS loader. Its production bundle rejects `--nimi-dev-renderer-url`. The protected native binding arrives only through Kit's optional dependency; do not add it directly to this App.
 
 `pnpm run build:tauri:production` remains an explicit alternative for a deliberately selected Tauri build profile; it is not the default production carrier.
 
 Runtime, Realm, registry admission, installed state and process truth remain with their canonical owners. This repository stores no Runtime credentials or protected session material.
 
 ## Publish with GitHub
+
+`NIMI_REPOSITORY_ADMIN_TOKEN` is only for reading tag-protection and Release
+immutability settings, with **Administration: Read-only** permission. The
+built-in GitHub token cannot read the Release immutability setting; it handles the
+actual Release upload. Local development does not need the extra token.
 
 Before pushing a release tag, complete these one-time repository steps:
 

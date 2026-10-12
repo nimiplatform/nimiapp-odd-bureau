@@ -74,7 +74,7 @@ export async function locatePhoto(photo: Photo, signal: AbortSignal, onFound?: (
     const located = await runNimiRuntimeScenarioJob({
     ai: createNimiLocalAppRuntimeScenarioJobClient(getClient().ai),
     request: {
-      head: { appId: 'nimi.odd-bureau', subjectUserId: '', timeoutMs: 180000 }, scenarioType: ScenarioType.VISION_LOCATE, executionMode: ExecutionMode.ASYNC_JOB,
+      head: { appId: 'nimi.odd-bureau', subjectUserId: '', timeoutMs: 0 }, scenarioType: ScenarioType.VISION_LOCATE, executionMode: ExecutionMode.ASYNC_JOB,
       spec: { spec: { oneofKind: 'visionLocate', visionLocate: {
         imageArtifactId: upload.artifactId,
         query,

@@ -1,7 +1,17 @@
+import { verifyStudioManagedAsset } from './managed-result-references.js';
+import { beginStudioJobRecovery, captureStudioJobRecoveryJobId, isStudioJobRecoveryCapability, readStudioJobRecovery, recoverStudioJobId, restoreSavedStudioJobResult, saveStudioJobRecoveryResult, studioJobRecoverySignal, type StudioJobRecoveryDetails } from './job-recovery.js';
+import { ScenarioType } from '@nimiplatform/sdk/runtime/generated';
 import {
   runRuntimeAIConsumeCapability,
   runRuntimeImageGenerate,
   runRuntimeMusicGenerate,
+  runRuntimeMusicTranscribe,
+  observeRuntimeMusicTranscription,
+  runRuntimeAudioSeparation,
+  observeRuntimeAudioSeparation,
+  runRuntimeVoiceConvert,
+  observeRuntimeVoiceConversion,
+  observeRuntimeMusicGeneration,
   runRuntimeSpeechSynthesize,
   runRuntimeSpeechTranscribe,
   runRuntimeVideoGenerate,
@@ -13,14 +23,19 @@ import {
   type NimiLocalAppClient,
 } from '@nimiplatform/sdk/app';
 import type {
+  StudioAudioSeparation,
+  StudioAudioSeparationRequest,
   StudioCapabilityRunInput,
   StudioCapabilityRunResult,
   StudioManagedArtifact,
+  StudioMusicGeneration,
+  StudioMusicTranscription,
   StudioNonSuccess,
   StudioNonSuccessDiagnostics,
   StudioNonSuccessReason,
   StudioRuntimeCapabilityDescriptor,
   StudioRuntimeInspection,
+  StudioVoiceConversion,
 } from './runtime-types.js';
 import {
   dispatchStudioCapabilityRuntime,
@@ -33,6 +48,13 @@ export type StudioRuntimeRunnerSet = {
   readonly aiConsume: typeof runRuntimeAIConsumeCapability;
   readonly imageGenerate: typeof runRuntimeImageGenerate;
   readonly musicGenerate: typeof runRuntimeMusicGenerate;
+  readonly musicTranscribe: typeof runRuntimeMusicTranscribe;
+  readonly musicTranscriptionObserve: typeof observeRuntimeMusicTranscription;
+  readonly voiceConvert: typeof runRuntimeVoiceConvert;
+  readonly voiceConversionObserve: typeof observeRuntimeVoiceConversion;
+  readonly audioSeparate: typeof runRuntimeAudioSeparation;
+  readonly audioSeparationObserve: typeof observeRuntimeAudioSeparation;
+  readonly musicObserve: typeof observeRuntimeMusicGeneration;
   readonly videoGenerate: typeof runRuntimeVideoGenerate;
   readonly speechSynthesize: typeof runRuntimeSpeechSynthesize;
   readonly speechTranscribe: typeof runRuntimeSpeechTranscribe;
@@ -58,6 +80,12 @@ export type StudioRuntimeHost = {
 };
 
 export type StudioCapabilityRuntimeContext = {
+  jobActionId?: string;
+  readonly musicSourceAudio?: StudioManagedArtifact;
+  readonly voiceSourceVocal?: StudioManagedArtifact;
+  readonly voiceTargetAudio?: StudioManagedArtifact;
+  readonly separationSourceAudio?: StudioManagedArtifact;
+  readonly separationRequest?: StudioAudioSeparationRequest;
   readonly capability: StudioRuntimeCapabilityDescriptor;
   readonly input: StudioCapabilityRunInput;
   readonly prompt: string;
@@ -87,6 +115,13 @@ export const DEFAULT_STUDIO_RUNTIME_RUNNERS: StudioRuntimeRunnerSet = Object.fre
   aiConsume: runRuntimeAIConsumeCapability,
   imageGenerate: runRuntimeImageGenerate,
   musicGenerate: runRuntimeMusicGenerate,
+  musicTranscribe: runRuntimeMusicTranscribe,
+  musicTranscriptionObserve: observeRuntimeMusicTranscription,
+  voiceConvert: runRuntimeVoiceConvert,
+  voiceConversionObserve: observeRuntimeVoiceConversion,
+  audioSeparate: runRuntimeAudioSeparation,
+  audioSeparationObserve: observeRuntimeAudioSeparation,
+  musicObserve: observeRuntimeMusicGeneration,
   videoGenerate: runRuntimeVideoGenerate,
   speechSynthesize: runRuntimeSpeechSynthesize,
   speechTranscribe: runRuntimeSpeechTranscribe,
@@ -129,7 +164,14 @@ export async function runStudioCapability(
 
   try {
     const dispatched = dispatchStudioCapabilityRuntime(orchestrator.handlers, context);
-    if (dispatched) return await dispatched;
+    if (dispatched) {
+      const result = await dispatched;
+      if (result.ok) studioJobRecoverySignal(input).throwIfAborted();
+      if (context.jobActionId && isStudioJobRecoveryCapability(capability.id)) {
+        await saveStudioJobRecoveryResult(context.host.client.storage, context.jobActionId, result, capability.id);
+      }
+      return result;
+    }
     if (!context.prompt) {
       return orchestrator.nonSuccess(
         capability,
@@ -151,13 +193,67 @@ export async function runStudioCapability(
   }
 }
 
-export function createStudioScenarioJobClient(context: StudioCapabilityRuntimeContext) {
-  return context.host.createScenarioJobClient(context.host.client.ai);
+export function createStudioScenarioJobClient(context: StudioCapabilityRuntimeContext, savedDetails?: Pick<StudioJobRecoveryDetails, 'sourceImage'>) {
+  const client = context.host.createScenarioJobClient(context.host.client.ai);
+  return { ...client, async submitScenarioJob(request: Parameters<typeof client.submitScenarioJob>[0], options?: Parameters<typeof client.submitScenarioJob>[1]) {
+    const spec = request.spec?.spec;
+    const details: StudioJobRecoveryDetails = { ...savedDetails, scenarioType: request.scenarioType,
+      ...(spec?.oneofKind === 'visionLocate' ? { expectedVision: { imageArtifactId: spec.visionLocate.imageArtifactId, geometry: spec.visionLocate.geometry } } : {}),
+      ...(spec?.oneofKind === 'voiceCreate' ? { creationSource: spec.voiceCreate.source.oneofKind === 'referenceAudio' ? 'reference-audio' as const : 'text-description' as const } : {}),
+      ...(spec?.oneofKind === 'speechTranscribe' ? { timestamps: spec.speechTranscribe.timestamps } : {}),
+    };
+    const id = await beginStudioJobAction(context, details);
+    context.input.signal?.throwIfAborted();
+    context.input.observationSignal?.throwIfAborted();
+    const response = await client.submitScenarioJob({ ...request, idempotencyKey: id }, options);
+    await captureStudioJobAction(context, id, response.job?.jobId ?? '');
+    return response;
+  } };
+}
+
+export async function beginStudioJobAction(context: StudioCapabilityRuntimeContext, details: StudioJobRecoveryDetails): Promise<string> {
+  context.input.signal?.throwIfAborted();
+  context.input.observationSignal?.throwIfAborted();
+  if (!isStudioJobRecoveryCapability(context.capability.id)) throw new Error('This capability has no saved Job action');
+  const id = await beginStudioJobRecovery(context.host.client.storage, context.capability.id, undefined, undefined, undefined,
+    context.input.recordedRunConfig, context.input.recordedPrompt ?? context.input.prompt, details);
+  context.jobActionId = id;
+  return id;
+}
+
+export async function captureStudioJobAction(context: StudioCapabilityRuntimeContext, id: string, jobId: string): Promise<void> {
+  if (!isStudioJobRecoveryCapability(context.capability.id)) throw new Error('Unknown Job capability');
+  await captureStudioJobRecoveryJobId(context.host.client.storage, id, jobId, context.capability.id);
+}
+
+/** Reopening a business action only resolves its original identity. */
+export async function recoverStudioJobAction(context: StudioCapabilityRuntimeContext, scenarioType: ScenarioType) {
+  const id = context.input.parameters?.recoverySubmissionId;
+  if (id === undefined) return null;
+  if (typeof id !== 'string' || !isStudioJobRecoveryCapability(context.capability.id)) throw new Error('Invalid saved action');
+  const entry = (await readStudioJobRecovery(context.host.client.storage, context.capability.id)).find(item => item.clientSubmissionId === id);
+  if (!entry || entry.details?.scenarioType !== scenarioType) throw new Error(context.host.translate('Music.recoveryMissing'));
+  context.jobActionId = id;
+  const saved = await restoreSavedStudioJobResult(entry, context.capability.label, context.capability.id, context.host.client.storage.assets, studioJobRecoverySignal(context.input));
+  return { entry, saved, jobId: saved ? undefined : await recoverStudioJobId(context.host.client, entry, context.capability.id) };
+}
+
+export async function submitStudioLocalJob(context: StudioCapabilityRuntimeContext,
+  spec: Parameters<NimiLocalAppClient['ai']['scenarioJobs']['submit']>[0], details: StudioJobRecoveryDetails) {
+  const id = await beginStudioJobAction(context, details);
+  context.input.signal?.throwIfAborted();
+  context.input.observationSignal?.throwIfAborted();
+  const response = await context.host.client.ai.scenarioJobs.submit(spec, { clientSubmissionId: id });
+  await captureStudioJobAction(context, id, response.job.jobId);
+  return response;
 }
 
 type ArtifactRunnerResult = Awaited<ReturnType<
   | typeof runRuntimeImageGenerate
   | typeof runRuntimeMusicGenerate
+  | typeof runRuntimeMusicTranscribe
+  | typeof runRuntimeAudioSeparation
+  | typeof runRuntimeVoiceConvert
   | typeof runRuntimeVideoGenerate
   | typeof runRuntimeSpeechSynthesize
 >>;
@@ -167,6 +263,9 @@ export async function projectStudioArtifactRunnerResult(
   result: ArtifactRunnerResult,
 ): Promise<StudioCapabilityRunResult> {
   if (result.ok === false) return projectStudioRunnerNonSuccess(context, result);
+  if (result.output.kind === 'music-transcription-artifacts' && !context.musicSourceAudio) throw new Error('Music transcription omitted the saved canonical input.');
+  if (result.output.kind === 'voice-conversion-artifacts' && !context.voiceSourceVocal) throw new Error('Voice conversion omitted the saved canonical source.');
+  if (result.output.kind === 'audio-separation' && !context.separationSourceAudio) throw new Error('Audio separation omitted the saved canonical source.');
   const artifacts: StudioManagedArtifact[] = [];
   const adoptedPaths: string[] = [];
   try {
@@ -179,12 +278,9 @@ export async function projectStudioArtifactRunnerResult(
         result.output.jobId,
         index,
       );
-      const adopted = await context.host.client.storage.assets.adoptArtifact({
-        artifactId: sourceArtifact.artifactId,
-        relativePath,
-        overwrite: false,
-      });
-      adoptedPaths.push(adopted.relativePath);
+      const retained = await adoptStudioJobArtifact(context, sourceArtifact, relativePath);
+      const adopted = retained.asset;
+      if (retained.created) adoptedPaths.push(adopted.relativePath);
       artifacts.push({
         relativePath: adopted.relativePath,
         ...(adopted.mediaType ? { mediaType: adopted.mediaType } : {}),
@@ -194,6 +290,7 @@ export async function projectStudioArtifactRunnerResult(
           ? context.capability.label
           : `${context.capability.label} ${index + 1}`,
         previewSource: 'managed-asset',
+        ...(result.output.kind === 'audio-artifacts' && result.output.artifacts[index]?.speechAlignment ? { speechAlignment: result.output.artifacts[index]!.speechAlignment } : {}),
       });
     }
   } catch (error) {
@@ -210,6 +307,63 @@ export async function projectStudioArtifactRunnerResult(
     }
     throw error;
   }
+  let musicGeneration: StudioMusicGeneration | undefined;
+  let musicTranscription: StudioMusicTranscription | undefined;
+  let voiceConversion: StudioVoiceConversion | undefined;
+  let audioSeparation: StudioAudioSeparation | undefined;
+  if (result.output.kind === 'music-transcription-artifacts') {
+    if (!context.musicSourceAudio) throw new Error('Music transcription omitted the saved canonical input.');
+    const pathFor = (id: string) => {
+      const index = result.output.artifacts.findIndex(artifact => artifact.artifactId === id);
+      if (index < 0 || !artifacts[index]) throw new Error('Transcription result references an unadopted output.');
+      return artifacts[index]!.relativePath;
+    };
+    const value = result.output.transcription;
+    musicTranscription = { sourceAudio: context.musicSourceAudio, sourceInfo: value.sourceInfo, inputRange: value.inputRange,
+      completeness: value.completeness, origin: value.origin, scores: value.scores.map(score => ({ relativePath: pathFor(score.artifactId), format: score.format, part: score.part })),
+      ...(value.timelineArtifactId ? { timelineRelativePath: pathFor(value.timelineArtifactId) } : {}) };
+  }
+  if (result.output.kind === 'voice-conversion-artifacts') {
+    if (!context.voiceSourceVocal) throw new Error('Voice conversion omitted the saved canonical source.');
+    const value = result.output.conversion;
+    const index = result.output.artifacts.findIndex(artifact => artifact.artifactId === value.vocalArtifactId);
+    const vocal = index < 0 ? undefined : artifacts[index];
+    if (!vocal || vocal.mediaType !== 'audio/wav') throw new Error('Voice conversion result references an unadopted vocal.');
+    voiceConversion = { sourceVocal: context.voiceSourceVocal,
+      ...(context.voiceTargetAudio ? { targetVoice: context.voiceTargetAudio } : {}),
+      vocal, sourceInfo: value.sourceInfo, inputRange: value.inputRange, vocalInfo: value.vocalInfo,
+      lengthRelation: value.lengthRelation, durationDeltaMs: value.durationDeltaMs };
+  }
+  if (result.output.kind === 'audio-separation') {
+    if (!context.separationSourceAudio) throw new Error('Audio separation omitted the saved canonical source.');
+    const value = result.output.separation;
+    const stemFor = (id: string) => {
+      const index = result.output.artifacts.findIndex(artifact => artifact.artifactId === id);
+      const stem = index < 0 ? undefined : artifacts[index];
+      if (!stem || stem.mediaType !== 'audio/wav') throw new Error('Audio separation result references an unadopted stem.');
+      return stem;
+    };
+    const vocals = stemFor(value.vocalsArtifactId);
+    const background = stemFor(value.backgroundArtifactId);
+    audioSeparation = { sourceAudio: context.separationSourceAudio, vocals, background,
+      ...(context.separationRequest ? { request: context.separationRequest } : {}),
+      ...(value.instrumentParts?.length ? { instrumentParts: value.instrumentParts.map(part => ({ kind: part.kind, artifact: stemFor(part.artifactId) })) } : {}) };
+  }
+  if (result.output.kind === 'music-artifacts') {
+    const generation = result.output.generation;
+    const pathFor = (artifactId: string) => {
+      const index = result.output.artifacts.findIndex((artifact) => artifact.artifactId === artifactId);
+      const path = artifacts[index]?.relativePath;
+      if (!path) throw new Error('Music result is missing its adopted artifact.');
+      return path;
+    };
+    musicGeneration = {
+      mixRelativePath: pathFor(generation.mixArtifactId), termination: generation.termination, audioInfo: generation.audioInfo,
+      ...(generation.actualSeed !== undefined ? { actualSeed: generation.actualSeed } : {}),
+      ...(generation.generatedScore ? { generatedScore: { relativePath: pathFor(generation.generatedScore.artifactId),
+        format: generation.generatedScore.format, origin: generation.generatedScore.origin, truncated: generation.generatedScore.truncated } } : {}),
+    };
+  }
   return {
     ok: true,
     capabilityId: context.capability.id,
@@ -217,6 +371,10 @@ export async function projectStudioArtifactRunnerResult(
     message: result.message,
     output: {
       kind: 'artifacts',
+      ...(musicGeneration ? { musicGeneration } : {}),
+      ...(musicTranscription ? { musicTranscription } : {}),
+      ...(voiceConversion ? { voiceConversion } : {}),
+      ...(audioSeparation ? { audioSeparation } : {}),
       jobId: result.output.jobId,
       jobState: result.output.jobStatus,
       artifactCount: result.output.artifactCount,
@@ -231,12 +389,13 @@ export function projectStudioRunnerNonSuccess(
   context: StudioCapabilityRuntimeContext,
   result: { readonly ok: false; readonly reason: string; readonly message: string; readonly error?: unknown },
 ): StudioNonSuccess {
-  return context.host.nonSuccess(
+  const diagnostics = studioNonSuccessDiagnostics(result.error);
+  return withStudioKnownJob(context.host.nonSuccess(
     context.capability,
-    studioNonSuccessReason(result.reason),
+    studioNonSuccessReasonFromRuntime(result.reason, diagnostics),
     result.message,
-    studioNonSuccessDiagnostics(result.error),
-  );
+    diagnostics,
+  ), result.error);
 }
 
 export function projectStudioRuntimeError(
@@ -244,16 +403,34 @@ export function projectStudioRuntimeError(
   error: unknown,
 ): StudioNonSuccess {
   const diagnostics = studioNonSuccessDiagnostics(error);
+  // An input the configured implementation cannot encode completely is an
+  // input outcome too; it is never retried or presented as a call failure.
   // @nimi-authority: rule.nimi.runtime.ai-provider.r126
-  const reason = diagnostics?.reasonCode.replaceAll('-', '_').toUpperCase() === 'AI_INPUT_INVALID'
-    ? 'input-invalid'
-    : studioNonSuccessReason(runtimeScenarioJobNonSuccessReasonFromError(error));
-  return context.host.nonSuccess(
+  const reason = studioNonSuccessReasonFromRuntime(runtimeScenarioJobNonSuccessReasonFromError(error), diagnostics);
+  return withStudioKnownJob(context.host.nonSuccess(
     context.capability,
     reason,
     studioRuntimeErrorMessage(error),
     diagnostics,
-  );
+  ), error);
+}
+
+/** Preserve an issued Job selector; unknown submission must not gain an ID. */
+function withStudioKnownJob(result: StudioNonSuccess, error: unknown): StudioNonSuccess {
+  const record = error && typeof error === 'object' ? error as { details?: unknown } : null;
+  const details = record?.details && typeof record.details === 'object' && !Array.isArray(record.details)
+    ? record.details as { jobId?: unknown } : null;
+  const id = details?.jobId;
+  return typeof id === 'string' && /^[A-Za-z0-9_.:-]{1,128}$/u.test(id)
+    ? { ...result, jobId: id }
+    : result;
+}
+
+function studioNonSuccessReasonFromRuntime(reason: string, diagnostics?: StudioNonSuccessDiagnostics): StudioNonSuccessReason {
+  if (diagnostics && ['SDK_LOCAL_APP_INPUT_INVALID', 'AI_INPUT_INVALID', 'AI_INPUT_LIMIT_EXCEEDED', 'AI_VOICE_INPUT_INVALID', 'AI_VOICE_TARGET_MODEL_MISMATCH', 'AI_VOICE_ASSET_NOT_FOUND', 'AI_VOICE_ASSET_EXPIRED'].includes(diagnostics.reasonCode)) {
+    return 'input-invalid';
+  }
+  return studioNonSuccessReason(reason);
 }
 
 export function studioNonSuccessReason(reason: string): StudioNonSuccessReason {
@@ -302,7 +479,7 @@ export function studioAbortError(): Error {
   return error;
 }
 
-async function managedStudioAssetPath(
+export async function managedStudioAssetPath(
   capabilityId: string,
   jobId: string,
   artifactIndex: number,
@@ -311,5 +488,26 @@ async function managedStudioAssetPath(
   const bytes = new TextEncoder().encode(identity);
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
   const token = Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('');
-  return `media/${capabilityId.replaceAll('.', '-')}/${token}.asset`;
+  return `media/${capabilityId.replaceAll('.', '-')}/${token}/result.asset`;
+}
+
+/** Reuse the original target after a lost adopt/history response. Never overwrite. */
+export async function adoptStudioJobArtifact(context: StudioCapabilityRuntimeContext,
+  artifact: { readonly artifactId?: string; readonly mimeType: string; readonly sizeBytes?: number | string; readonly sha256?: string }, relativePath: string) {
+  if (!artifact.artifactId) throw new Error('Runtime artifact identity is missing');
+  const signal = studioJobRecoverySignal(context.input);
+  signal.throwIfAborted();
+  const assets = context.host.client.storage.assets;
+  const prefix = relativePath.slice(0, relativePath.lastIndexOf('/') + 1);
+  const retained = await assets.list({ prefix, pageSize: 2 });
+  if (retained.nextCursor || retained.assets.length > 1) throw new Error('Saved result target contains conflicting files');
+  let asset = retained.assets[0];
+  const created = !asset;
+  const hash = artifact.sha256 ? `sha256:${artifact.sha256.replace(/^sha256:/u, '')}` : undefined;
+  if (asset && (!hash || !asset.relativePath.startsWith(relativePath.replace(/\.[^/.]+$/u, '') + '.'))) throw new Error('Saved result cannot be matched to the original output');
+  signal.throwIfAborted();
+  if (!asset) asset = await assets.adoptArtifact({ artifactId: artifact.artifactId, relativePath, overwrite: false });
+  if ((hash && asset.sha256 !== hash) || (artifact.sizeBytes !== undefined && asset.sizeBytes !== Number(artifact.sizeBytes)) || asset.mediaType !== artifact.mimeType) throw new Error('Saved result does not match the original output');
+  await verifyStudioManagedAsset(assets, asset, signal);
+  return { asset, created };
 }

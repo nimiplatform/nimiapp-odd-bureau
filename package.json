@@ -34,12 +34,13 @@
   },
   "dependencies": {
     "@fontsource/zcool-qingke-huangyou": "5.3.0",
-    "i18next": "^25.10.10",
+    "i18next": "^26.4.2",
     "lucide-react": "^0.577.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "@nimiplatform/sdk": "^0.10.0",
-    "@nimiplatform/kit": "^0.6.0"
+    "@nimiplatform/sdk": "^0.21.0",
+    "@nimiplatform/kit": "^0.19.0",
+    "react-i18next": "^17.0.0"
   },
   "devDependencies": {
     "@electron/packager": "^20.3.0",
@@ -48,14 +49,15 @@
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
-    "@vitejs/plugin-react": "^5.2.0",
-    "electron": "^42.10.1",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^44.5.1",
     "esbuild": "^0.28.2",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
-    "vite": "^7.3.6",
+    "vite": "^8.3.3",
     "yaml": "^2.9.0",
-    "@nimiplatform/app-tools": "^0.4.0",
-    "@nimiplatform/nimi-coding": "0.6.2"
-  }
+    "@nimiplatform/app-tools": "^0.12.1",
+    "@nimiplatform/nimi-coding": "0.6.5"
+  },
+  "license": "MIT"
 }

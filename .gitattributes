@@ -1,4 +1,2 @@
-* text=auto eol=lf
-
-*.bat text eol=crlf
-*.cmd text eol=crlf
+# Preserve the reviewed source license bytes on every checkout platform.
+LICENSE -text

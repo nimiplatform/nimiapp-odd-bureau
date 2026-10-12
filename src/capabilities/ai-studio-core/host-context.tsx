@@ -1,6 +1,6 @@
 import type { NimiLocalAppClient } from '@nimiplatform/sdk/app';
 import { createContext, useContext, type ReactNode } from 'react';
-import type { NimiPortableAppAIConfig } from '@nimiplatform/sdk/ai';
+import type { NimiPortableAppAIConfig, NimiAIConfigSnapshot } from '@nimiplatform/sdk/ai';
 import type { StudioCapabilityRunInput, StudioCapabilityRunResult } from './runtime-types.js';
 import type { StudioCapabilityDescriptor } from './module-registration.js';
 import type { StudioRunTargetSummary } from './history.js';
@@ -10,6 +10,15 @@ type NimiLocalAppArtifactUploadMime = Parameters<NimiLocalAppClient['ai']['artif
 
 export type StudioHostCommandResult<TValue extends object = Record<string, never>> =
   | { readonly ok: true; readonly value?: TValue }
+  | { readonly ok: false; readonly error?: unknown };
+
+export type StudioTextExportResult =
+  | { readonly ok: true; readonly value: {
+      readonly filename: string;
+      readonly artifactPath: string;
+      readonly byteSize: number;
+      readonly revealed: boolean;
+    } }
   | { readonly ok: false; readonly error?: unknown };
 
 export type AIStudioHostPort = {
@@ -37,11 +46,12 @@ export type AIStudioHostPort = {
     readonly commands: {
       readonly savePromptDraft: (key: StudioPromptDraftKey, prompt: string, enabled: boolean) => Promise<unknown>;
       readonly copyText: (text: string) => Promise<StudioHostCommandResult<{ readonly copied: boolean }>>;
-      readonly exportText: (input: { readonly filename: string; readonly body: string }) => Promise<unknown>;
+      readonly exportText: (input: { readonly filename: string; readonly body: string }) => Promise<StudioTextExportResult>;
     };
   };
   readonly sdk: {
     readonly runCapability: (input: StudioCapabilityRunInput) => Promise<StudioCapabilityRunResult>;
+    readonly deleteLocalAppVoiceAsset: (voiceAssetId: string) => Promise<{ readonly deleted: true }>;
     readonly listLocalAppVoiceAssets: () => Promise<readonly {
       readonly voiceAssetId: string;
       readonly creationSource: string;
@@ -55,7 +65,10 @@ export type AIStudioHostPort = {
       readonly sizeBytes: number;
       readonly mimeType: NimiLocalAppArtifactUploadMime;
     }>;
+    readonly assets: NimiLocalAppClient['storage']['assets'];
+    readonly storage: Pick<NimiLocalAppClient['storage'], 'readJson' | 'writeJson'>;
     readonly aiConfig: {
+      readonly getSnapshot: () => Promise<NimiAIConfigSnapshot>;
       readonly get: () => Promise<NimiPortableAppAIConfig | null>;
     };
     readonly revealLocalAppAsset: (relativePath: string) => Promise<{ readonly revealed: true }>;
