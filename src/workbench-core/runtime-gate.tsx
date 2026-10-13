@@ -1,3 +1,4 @@
+import { displayName, localizeCarrierMessage } from '../odd-bureau/i18n.js';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { OfflineCoordinator, type OfflineTier } from '@nimiplatform/kit/core/offline-coordinator';
 import { Button, InlineAlert, StatusBadge, Surface } from '@nimiplatform/kit/ui';
@@ -99,7 +100,7 @@ export function WorkbenchRuntimeGate({
   if (state.kind === 'checking') {
     return (
       <main className="runtime-check-screen">
-        <StatusBadge tone="neutral" shape="dot">{copy.checking}</StatusBadge>
+        <StatusBadge tone="neutral" shape="dot">{localizeCarrierMessage(copy.checking)}</StatusBadge>
       </main>
     );
   }
@@ -110,18 +111,18 @@ export function WorkbenchRuntimeGate({
       <main className="runtime-unavailable-screen" aria-live="polite">
         <Surface className="runtime-unavailable-panel" material="glass-thick" tone="panel" elevation="floating">
           <div className="runtime-unavailable-heading">
-            <StatusBadge tone="warning" shape="dot">{copy.setupRequired}</StatusBadge>
-            <h1>{appTitle}</h1>
+            <StatusBadge tone="warning" shape="dot">{localizeCarrierMessage(copy.setupRequired)}</StatusBadge>
+            <h1>{displayName}</h1>
           </div>
           <InlineAlert tone="warning">
             <div className="runtime-alert-copy">
-              <strong>{projection.signInRequired ? copy.signInRequired : copy.connectionRequired}</strong>
-              <span>{projection.body}</span>
+              <strong>{localizeCarrierMessage(projection.signInRequired ? copy.signInRequired : copy.connectionRequired)}</strong>
+              <span>{localizeCarrierMessage(projection.body)}</span>
             </div>
           </InlineAlert>
-          <p className="runtime-action-hint">{copy.offlineTier(state.offlineTier)}</p>
-          {projection.nextAction ? <p className="runtime-action-hint">{copy.nextAction(projection.nextAction)}</p> : null}
-          <Button type="button" tone="primary" onClick={retry}>{copy.retry}</Button>
+          <p className="runtime-action-hint">{localizeCarrierMessage(copy.offlineTier(state.offlineTier))}</p>
+          {projection.nextAction ? <p className="runtime-action-hint">{localizeCarrierMessage(copy.nextAction(projection.nextAction))}</p> : null}
+          <Button type="button" tone="primary" onClick={retry}>{localizeCarrierMessage(copy.retry)}</Button>
         </Surface>
       </main>
     );

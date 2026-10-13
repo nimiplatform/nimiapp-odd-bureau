@@ -46,3 +46,13 @@ units:
     relations:
       - type: applies_to
         target: definition.odd-bureau.playground.round
+  - id: rule.odd-bureau.playground.language
+    kind: rule
+    title: Follow system language
+    modality: must
+    statement: At App launch Chinese system locales select Simplified Chinese and other system locales select English; App-owned interface copy, accessibility labels, runtime display name, generated prose and speech use that language, while App IDs and machine enums remain stable; Chinese and English observed labels preserve the same object-specific machine operations; published pre-localization saves without a language field retain their original Chinese semantics.
+    condition: Whenever the App launches, prepares a round, generates dialogue or proposals, or synthesizes speech.
+    failure: Reject incomplete generation and voices that do not support the selected language without claiming success; saved fiction from another language is retained until a new round is saved and is not automatically resumed or silently translated.
+    relations:
+      - type: applies_to
+        target: definition.odd-bureau.playground.round

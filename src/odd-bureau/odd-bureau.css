@@ -230,3 +230,15 @@
   .odd-bureau .cancel-key { margin-top: 15px; } .scene-verdict > span { font-size: 31px; }
 }
 @media (prefers-reduced-motion: reduce) { .odd-bureau *, .odd-bureau *::before, .odd-bureau *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+
+html[lang="en"] .odd-bureau h1,
+html[lang="en"] .odd-bureau h2,
+html[lang="en"] .wordmark > span { font-family: inherit; font-weight: 700; }
+html[lang="en"] .intro-line h1 { font-size: clamp(30px, 4vw, 52px); }
+html[lang="en"] .odd-bureau .primary-key,
+html[lang="en"] .odd-bureau .upload-key,
+html[lang="en"] .odd-bureau .quiet-button { white-space: normal; height: auto; padding-block: 10px; }
+html[lang="en"] .bureau-header { flex-wrap: wrap; }
+html[lang="en"] .bureau-header .wordmark > span { font-size: 23px; }
+html[lang="en"] .play-note { white-space: normal; }
+html[lang="en"] .sample-tag { right: 16px; width: fit-content; }

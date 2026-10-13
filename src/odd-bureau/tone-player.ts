@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import type { Note } from './play-rules.js';
 
 /** The game performs its explicit note rules locally; this is not a claimed AI audio job. */
@@ -10,7 +11,7 @@ export class TonePlayer {
     const context = new AudioContext(); this.context = context;
     await context.resume();
     if (this.context !== context) return false;
-    if (context.state !== 'running') { this.stop(); throw new Error('声音没有开始播放，请再点一次试听。'); }
+    if (context.state !== 'running') { this.stop(); throw new Error(t("声音没有开始播放，请再点一次试听。")); }
     const pitches = [261.626, 293.665, 329.628, 391.995, 440];
     let time = context.currentTime + 0.025;
     return new Promise<boolean>(resolve => {

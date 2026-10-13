@@ -18,7 +18,7 @@ Turn a photo into a playable world of everyday objects. The approved second iter
 
 ## Operating Context
 
-A real Nimi App developed with app-tools and the public SDK/Kit, running in the Desktop-supervised Electron carrier. Chinese is the initial product language.
+A real Nimi App developed with app-tools and the public SDK/Kit, running in the Desktop-supervised Electron carrier. The App follows the system language at launch: Chinese locales use Simplified Chinese and other locales use English. Interface copy, generated stories, speech, and the runtime display name follow that selection (奇物局 / Odd Bureau). Relaunch after changing the system language. Saved fiction in another language is retained until a new round is saved, but is not resumed or silently translated. The platform manifest has a single immutable scaffold display_name, 奇物局; locale-specific registry names are not supported by the current carrier contract.
 
 ## Capabilities and Constraints
 

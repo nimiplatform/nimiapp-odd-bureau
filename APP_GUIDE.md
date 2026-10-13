@@ -1,5 +1,9 @@
 # 奇物局 · Odd Bureau
 
+跟随启动时的系统语言：中文系统显示「奇物局」，其他语言显示「Odd Bureau」，界面、AI 创作和朗读一起切换。更改系统语言后请重新启动 App。旧版本的中文进度仍可读取；切换语言后，新玩法使用当前语言，不会悄悄翻译已有故事。
+
+The App follows the system language at launch: Chinese locales use 奇物局 and Simplified Chinese; other locales use Odd Bureau and English for the interface, AI writing, and speech. Relaunch after changing the system language. Existing Chinese progress remains readable; saved fiction is not silently translated.
+
 把照片里的杯子、书和灯变成有性格的角色。你可以调查一桩奇物谜案，把物件连接成音乐机关，或者协商一场物件戏剧的分工。
 
 在 Nimi Home 安装并启动。在「能力设置」为「看见物品」选择已准备的视觉定位模型，为「创作玩法」选择文本模型；「让物品开口」的语音合成是可选项。可使用内置的 AI 试玩照片，也可选择自己的照片。实际定位框决定登场物件，AI 提议需要满足游戏规则，失败时不会用虚构定位或伪成功继续。
@@ -23,3 +27,11 @@ Repository checks and managed production builds, package provenance and immutabl
 Real vision localization found six objects in the bundled trial photo. Real text generation produced the machine rules. Clock → book → plant → cup met the actual six-note target; the completed challenge and stored sounds survived a full Home stop/launch.
 
 **NOT-VERIFIED:** Windows GUI installation and AI use. Mystery, negotiation and optional speech synthesis were not rerun.
+
+## Bilingual development verification (2026-10-13, unreleased changes)
+
+`sync`, `check`, renderer/Electron builds, authority validation and all 31 tests passed for the new bilingual source. Component rendering covers Chinese, English and non-Chinese locale fallback, six AI prompt builders, voice language tags/names, and reading published Chinese saves.
+
+On the Desktop-supervised macOS arm64 development Host, the actual Chinese system locale displayed 奇物局 with `zh-CN` document language. English navigator-language emulation on the same protected Host displayed Odd Bureau with `en` document language; the English home, AI settings, mystery view and 390px layout were inspected. Real vision found six objects; real text generation created “The Great Fruit Fiasco,” and a witness answered in English. Reloading restored the English case and collected testimony. Returning to Chinese restored the original Chinese machine and its existing rules without errors.
+
+**NOT-VERIFIED:** successful Chinese/English speech playback: actual synthesis returned `AI_LOCAL_EXECUTION_LOAD_FAILED` (local execution model load failed). The new Chinese machine generation failed operation validation; no playable success was substituted. Full negotiation/performance acceptance, English machine acceptance, Windows GUI and installed-package localization remain unverified. Registry, installer and managed application-menu names still use the carrier's single canonical 奇物局 display name; App-owned branding and document/window title are localized.

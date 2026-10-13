@@ -39,7 +39,7 @@ test('containers accumulate actual notes, reject overflow atomically, and paths 
   let state = { ...initialMachine(), path: ['clock', 'book', 'cup'] };
   for (let i = 0; i < 8; i++) state = runMachine(machine, props, state);
   assert.equal(state.stored.cup.length, 32);
-  assert.throws(() => runMachine(machine, props, state), /装不下/);
+  assert.throws(() => runMachine(machine, props, state), /装不下|container is full/);
   assert.equal(state.runs, 8);
   assert.throws(() => simulateMachine(machine, props, ['clock', 'book', 'book', 'cup']));
   assert.throws(() => simulateMachine(machine, props, ['clock', 'unknown', 'cup']));
@@ -62,10 +62,10 @@ const strike = {
 };
 test('language proposals and direct actions share concrete prerequisites and irreversible allocations', () => {
   const plan = parseStrike(strike, props);
-  assert.throws(() => commitPromises(plan, [], [{ kind: 'assign', objectId: 'clock', task: 'reading' }]), /休息/);
-  assert.throws(() => commitPromises(plan, [], [{ kind: 'assign', objectId: 'book', task: 'story' }]), /署名/);
+  assert.throws(() => commitPromises(plan, [], [{ kind: 'assign', objectId: 'clock', task: 'reading' }]), /休息|grant.*leave/);
+  assert.throws(() => commitPromises(plan, [], [{ kind: 'assign', objectId: 'book', task: 'story' }]), /署名|credit/);
   const rest = commitPromises(plan, [], [{ kind: 'rest', objectId: 'lamp' }]);
-  assert.throws(() => commitPromises(plan, rest.promises, [{ kind: 'assign', objectId: 'lamp', task: 'stage' }]), /休假/);
+  assert.throws(() => commitPromises(plan, rest.promises, [{ kind: 'assign', objectId: 'lamp', task: 'stage' }]), /休假|on leave/);
   assert.throws(() => commitPromises(plan, rest.promises, [{ kind: 'rest', objectId: 'cup' }]));
   assert.equal(rest.promises.length, 1);
   const credited = commitPromises(plan, rest.promises, [{ kind: 'credit', objectId: 'book' }]);
@@ -84,14 +84,14 @@ test('a valid arrangement honors the rest and credit promises and fulfils three 
   assert.deepEqual(commitPromises(plan, state.promises, []), state);
 });
 test('impossible actor demands and invented proposal actions are rejected before they can affect play', () => {
-  assert.throws(() => parseStrike({ ...strike, people: strike.people.map(p => ({ ...p, offers: p.offers.map(o => ({ ...o, needsCredit: true })) })) }, props), /有解/);
+  assert.throws(() => parseStrike({ ...strike, people: strike.people.map(p => ({ ...p, offers: p.offers.map(o => ({ ...o, needsCredit: true })) })) }, props), /有解|valid solution/);
   assert.throws(() => parseActions([{ kind: 'revoke', objectId: 'book' }], props));
   assert.throws(() => parseActions([{ kind: 'rest', objectId: 'invisible-cat' }], props));
   assert.throws(() => commitPromises(strike, [], [{ kind: 'rest', objectId: 'lamp' }, { kind: 'assign', objectId: 'book', task: 'story' }]));
   assert.equal(strikeReady(commitPromises(strike, [], [])), false);
 });
 test('a performed tale cannot reopen the credits or leave allocation', () => {
-  assert.throws(() => parsePerformance({ parts: ['杯子唱歌。', '时钟打拍。', '盆栽说：所以署名归我。'] }), /后台/);
+  assert.throws(() => parsePerformance({ parts: ['杯子唱歌。', '时钟打拍。', '盆栽说：所以署名归我。'] }), /后台|backstage/);
   assert.throws(() => parsePerformance({ parts: ['一幕', '二幕'] }));
   assert.deepEqual(parsePerformance({ parts: ['杯子想看海。', '书本折出了一只小船。', '盆栽说：带上我的叶子当帆吧。'] }), ['杯子想看海。', '书本折出了一只小船。', '盆栽说：带上我的叶子当帆吧。']);
 });
@@ -108,7 +108,7 @@ const locatedProps = props.map((prop, i) => ({ ...prop, id: `object-${i + 1}` })
 const locatedId = id => locatedProps[props.findIndex(p => p.id === id)].id;
 const savedMachinePlan = { ...machine, nodes: machine.nodes.map(n => ({ ...n, objectId: locatedId(n.objectId) })) };
 const savedStrikePlan = { ...strike, people: strike.people.map(p => ({ ...p, objectId: locatedId(p.objectId), offers: p.offers.map(o => ({ ...o, needsRest: o.needsRest && locatedId(o.needsRest) })) })) };
-const savedRound = round => ({ id: 'saved-round', photoPath: 'play-scenes/saved-photo.jpg', photoName: '照片', photoSource: 'upload', props: locatedProps, round });
+const savedRound = round => ({ id: 'saved-round', photoPath: 'play-scenes/saved-photo.jpg', photoName: '照片', photoSource: 'upload', language: 'en', props: locatedProps, round });
 const machineSave = state => savedRound({ kind: 'machine', plan: savedMachinePlan, state });
 const strikeSave = state => savedRound({ kind: 'strike', plan: savedStrikePlan, state });
 
@@ -142,6 +142,7 @@ test('saved playground geometry and photo identity are validated without coercio
   for (const photoPath of ['current-case.json', '../photo.jpg', 'play-scenes/../photo.jpg', '/play-scenes/photo.jpg']) {
     assert.throws(() => parsePlaySave({ ...machineSave(initialMachine()), photoPath }), photoPath);
   }
+  for (const language of [null, 'fr']) assert.throws(() => parsePlaySave({ ...machineSave(initialMachine()), language }));
   for (const photoSource of [null, ['upload'], {}, 'unknown']) {
     assert.throws(() => parsePlaySave({ ...machineSave(initialMachine()), photoSource }));
   }
@@ -176,4 +177,9 @@ test('strike saves retain valid commitments and reject rewritten promise chronol
     { ...performed, promises: [] },
     { ...performed, curtain: 4 },
   ]) assert.throws(() => parsePlaySave(strikeSave(state)));
+});
+
+test('published Chinese playground saves without language retain their full progress', () => {
+  const { language, ...published } = machineSave(initialMachine());
+  assert.deepEqual(parsePlaySave(published), { ...published, language: 'zh' });
 });

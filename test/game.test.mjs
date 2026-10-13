@@ -48,7 +48,7 @@ test('character IDs are normalized before looking up the located name', () => {
 });
 
 const savedSession = {
-  id: 'test-case', mood: 'missing', createdAt: '2026-09-12T00:00:00.000Z',
+  language: 'en', id: 'test-case', mood: 'missing', createdAt: '2026-09-12T00:00:00.000Z',
   photoPath: 'cases/test-case.jpg', photoName: 'Breakfast', photoSource: 'upload',
   props, mystery, discovered: ['object-1', 'object-3'], evidence: ['object-1', 'object-3'],
   messages: { 'object-1': [{ who: 'object', text: 'Evidence from cup.' }] }, accusation: null,
@@ -90,6 +90,8 @@ test('saved cases reject invalid geometry and metadata before loading the photo'
     { props: [{ ...props[0], box: { ...props[0].box, x1: -1 } }, ...props.slice(1)] },
     { props: [{ ...props[0], box: { ...props[0].box, y1: NaN } }, ...props.slice(1)] },
     { mood: 'unknown' },
+    { language: 'fr' },
+    { language: null },
     { createdAt: 'invalid date' },
     { photoPath: 'cases/another-case.jpg' },
     { id: '../other', photoPath: 'cases/../other.jpg' },
@@ -105,4 +107,9 @@ test('accusation requires evidence; free interrogation does not receive the hidd
   assert.ok(prompt.includes(mystery.characters[0].testimony));
   assert.ok(!prompt.includes(mystery.resolution));
   assert.ok(!prompt.includes('culpritId'));
+});
+
+test('published Chinese case saves without language retain their full progress', () => {
+  const { language, ...published } = savedSession;
+  assert.deepEqual(parseSession(published), { ...published, language: 'zh' });
 });
