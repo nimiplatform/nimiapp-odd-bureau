@@ -1,37 +1,48 @@
-# 奇物局 · Odd Bureau
+# 奇物局 · Odd Bureau 玩法指南
 
-跟随启动时的系统语言：中文系统显示「奇物局」，其他语言显示「Odd Bureau」，界面、AI 创作和朗读一起切换。更改系统语言后请重新启动 App。旧版本的中文进度仍可读取；切换语言后，新玩法使用当前语言，不会悄悄翻译已有故事。
+欢迎来到奇物局！在这里，你身边的日常物件不再沉默——桌上的马克杯可能是一桩失踪案的关键证人，台灯是洞察全局的侦探，而几本书和文具还能串联成奇妙的声音机关。
 
-The App follows the system language at launch: Chinese locales use 奇物局 and Simplified Chinese; other locales use Odd Bureau and English for the interface, AI writing, and speech. Relaunch after changing the system language. Existing Chinese progress remains readable; saved fiction is not silently translated.
+---
 
-把照片里的杯子、书和灯变成有性格的角色。你可以调查一桩奇物谜案，把物件连接成音乐机关，或者协商一场物件戏剧的分工。
+## 三大核心玩法
 
-在 Nimi Home 安装并启动。在「能力设置」为「看见物品」选择已准备的视觉定位模型，为「创作玩法」选择文本模型；「让物品开口」的语音合成是可选项。可使用内置的 AI 试玩照片，也可选择自己的照片。实际定位框决定登场物件，AI 提议需要满足游戏规则，失败时不会用虚构定位或伪成功继续。
+### 1. 奇物谜案
+- **准备或选择一张桌面照片**（也可直接使用内置的试玩照片）。
+- 应用先定位照片中的关键物品，再借助 AI 为它们编写鲜明的性格与案件线索。
+- 逐一审问桌面物件，比对它们自相矛盾的证词，搜集物理线索，一步步推理出桌面事件的真相。
 
-照片、规则、线索、对话和进度保存到 App 的 Nimi 托管本地存储。选择云端模型时，这次推理需要的内容会经 Nimi 发往选定服务；App 不持有服务商凭据。关闭并重新打开 App 可继续已保存的一局。
+### 2. 声音机关
+- 每轮物件都带有既定的声音变化规则。
+- 先查看本轮各物件的规则，再将它们连成一条声响反应链（例如：闹钟 → 字典 → 绿植 → 陶瓷杯），让音符顺着路径层层变化，尝试达成本轮目标。
 
-## Development and release
+### 3. 罢工谈判与分工协商
+- 物件们罢工了，纷纷开出自己的复工条件。你手头有 1 个休假名额和 1 个署名名额，还需要敲定谁来负责编故事、朗读与舞台工作。
+- 先看清各方条件再作承诺：一旦确认某项安排，就会锁定并约束你的后续选择。
+- 达成可行的分工后，即可欣赏物件们登台演出。演出会严格遵循商定的安排，绝不会悄悄改写你此前的承诺。
 
-Published dependencies: SDK 0.21.0, Kit/native 0.19.3, App Tools 0.12.1, nimi-coding 0.6.5. Install with `pnpm install --frozen-lockfile`; use `pnpm dev` for the Desktop-supervised Electron Host. Existing data requires the explicit registration shown by `pnpm exec nimi-app dev --list-registrations`.
+---
 
-Run `pnpm typecheck`, `pnpm exec nimi-app test`, and `pnpm exec nimi-app check --production`. Build and pack through `pnpm exec nimi-app build --target macos-aarch64 --production` and `pnpm exec nimi-app pack --target macos-aarch64 --production`; Windows uses the declared `windows-x86_64` target. Annotated version tags invoke the managed GitHub Release workflow. Registry admission and real installed-App acceptance are separate steps.
+## 游戏语言切换
 
-The App-owned license is MIT, copyright Nimi Network Limited. Template notices remain in `licenses/nimi-app-template.txt`. Public SDK/Kit carriers own Runtime, registration, authorization and AI jobs; this repository owns the game and its local progress.
+奇物局在启动时会自动跟随操作系统的语言设置：
+- **中文系统**：界面与角色对话自动使用简体中文（奇物局）。
+- **其他语言系统**：界面、叙事与对话自动使用英文（Odd Bureau）。
+- 切换系统语言后，重启应用即可生效。
+- 旧进度不会自动翻译，也不会在另一种语言下恢复。只要尚未保存对应玩法的新一轮进度，切回原语言后仍可继续。
+- 保存新一轮会替换对应的旧进度；「声音机关」与「罢工谈判」共用一份进度。
 
-## Published dependency and Catalog acceptance (2026-10-13)
+---
 
-Current public release: [0.1.1](https://github.com/nimiplatform/nimiapp-odd-bureau/releases/tag/v0.1.1); [Registry admission #87](https://github.com/nimiplatform/nimi-app-registry/pull/87) is merged for macOS arm64 and Windows x64. Frozen locks use published SDK 0.21.0, Kit/native 0.19.3, App Tools 0.12.1 and nimi-coding 0.6.5; no local Nimi archive or source-link resolution is required.
+## 模型与能力配置建议
 
-Repository checks and managed production builds, package provenance and immutable Release checks passed for both declared targets. Actual Catalog download, installation and AI acceptance ran on macOS arm64 through source Nimi Home and its matching protected Runtime (Nimi main 35498102b). Runtime identity and App Access checks remain enforced.
+在 Nimi Home 中为奇物局配置以下能力即可畅快游玩：
+1. **视觉定位（`vision.locate`）**：识别照片中各个物品的具体边界与位置。
+2. **文本生成（`text.generate`）**：驱动物品的幽默对话、线索逻辑与剧场脚本。
+3. **语音合成（`audio.synthesize`）** *（可选）*：为不同物品赋予专属音色，开启台词语音朗读。
 
-Real vision localization found six objects in the bundled trial photo. Real text generation produced the machine rules. Clock → book → plant → cup met the actual six-note target; the completed challenge and stored sounds survived a full Home stop/launch.
+---
 
-**NOT-VERIFIED:** Windows GUI installation and AI use. Mystery, negotiation and optional speech synthesis were not rerun.
+## 数据与隐私保护
 
-## Bilingual development verification (2026-10-13, unreleased changes)
-
-`sync`, `check`, renderer/Electron builds, authority validation and all 31 tests passed for the new bilingual source. Component rendering covers Chinese, English and non-Chinese locale fallback, six AI prompt builders, voice language tags/names, and reading published Chinese saves.
-
-On the Desktop-supervised macOS arm64 development Host, the actual Chinese system locale displayed 奇物局 with `zh-CN` document language. English navigator-language emulation on the same protected Host displayed Odd Bureau with `en` document language; the English home, AI settings, mystery view and 390px layout were inspected. Real vision found six objects; real text generation created “The Great Fruit Fiasco,” and a witness answered in English. Reloading restored the English case and collected testimony. Returning to Chinese restored the original Chinese machine and its existing rules without errors.
-
-**NOT-VERIFIED:** successful Chinese/English speech playback: actual synthesis returned `AI_LOCAL_EXECUTION_LOAD_FAILED` (local execution model load failed). The new Chinese machine generation failed operation validation; no playable success was substituted. Full negotiation/performance acceptance, English machine acceptance, Windows GUI and installed-package localization remain unverified. Registry, installer and managed application-menu names still use the carrier's single canonical 奇物局 display name; App-owned branding and document/window title are localized.
+- **本地存档**：保存成功的照片、案件进度、对话记录与声音机关均存储在本地 App 存储中。关闭并重启应用后，可随时继续未完的谜案或搭建新机关。
+- **按需调用模型**：发起新的物品识别、对话生成或语音合成时，需要对应的模型能力处于可用状态。使用云端模型时，仅发送当前推理所必需的文本与图片，应用本身不接触任何第三方 API 密钥。

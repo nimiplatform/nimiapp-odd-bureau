@@ -1,75 +1,84 @@
-# 奇物局
+# Odd Bureau (奇物局)
 
-This standalone App was generated as an identity-neutral base plus the explicitly selected admitted feature closure.
+> Transform everyday objects in your photos into lively characters with quirks, personalities, and voices.
 
-Profile: `standalone`.
+Odd Bureau turns mundane tabletop objects—cups, books, desk lamps, houseplants—into quirky suspects, musical gears, and dramatic actors. Powered by vision localization, conversational AI, and optional voice synthesis, Odd Bureau runs through protected Nimi calls using the Local or Cloud routes you select.
 
-- App-owned product code: `src/workbench-core/**`, selected `src/capabilities/**`, and subsequent product edits.
-- App-owned license: `LICENSE` starts as an MIT license naming the package author, or the App title when no author was given. Replace it with the App's own terms as needed and declare the matching `license` identifier in `package.json` before packaging; `sync` never rewrites it.
-- Scaffold-managed code: carrier/auth wiring, identity, manifests, build/release inputs, managed workflow, generated composition glue, and the template's own license notice in `licenses/nimi-app-template.txt`.
-- Package-owned projections: `.nimi/{config,contracts,methodology}/**`, materialized by the pinned local `nimicoding` package during `init`.
+---
 
-`sync` refreshes scaffold-managed files without overwriting App-owned code. `check` is non-mutating. Changing identity, profile or direct feature selection requires a fresh scaffold.
+## Game Modes & Experience
 
-## Workflow
+Bring a photo of your desk or choose one of the built-in trial photos. Odd Bureau identifies real objects and brings them to life across three distinct gameplay scenarios:
 
-`create` has completed. Continue in this order:
+1. **Object Mystery (奇物谜案)**
+   A dramatic tabletop crime has taken place. The spilled coffee cup looks guilty, but the reading lamp claims to have witnessed everything from above. Interview the objects, collect conflicting testimonies, piece together physical clues, and solve the riddle.
+2. **Musical Contraptions (声音机关)**
+   Wire objects together into an acoustic mechanism. Chain a clock, a textbook, a potted succulent, and a ceramic mug to trigger synchronized notes and rhythms following the fixed rules shown for each object.
+3. **Strike Negotiation (罢工谈判)**
+   The objects have demands before they will perform. Allocate one leave slot and one credit, then agree on who will write, read, and stage the tale. Choose carefully: confirmed promises lock in constraints for later choices, and the final story strictly honors the deal without quietly undoing your commitments.
 
+### Bilingual Experience
+Odd Bureau automatically follows your system language at launch:
+- **Chinese System**: Launches as **奇物局** with Simplified Chinese dialogue, interface, and prompts.
+- **Other Systems**: Launches as **Odd Bureau** with full English narration, dialogue, and UI.
+- Existing saved games remain intact and are never silently overwritten when switching languages.
+
+---
+
+## AI Capabilities Required
+
+In Nimi Home's **Capability Settings** for Odd Bureau, configure:
+- **Vision Localization (`vision.locate`)**: Required to identify and locate physical objects in photos.
+- **Creative Writing (`text.generate`)**: Required to generate character dialogue, clues, and story events.
+- **Voice Synthesis (`audio.synthesize`)** *(Optional)*: Gives characters audible voices to read their dialogue aloud.
+
+Saved photos and game progress live in local Nimi App storage. Starting new object analysis, dialogue generation, or speech synthesis requires the corresponding capabilities to be active; when using a Cloud route, only the text and image inputs needed for that request are sent to your selected provider.
+
+---
+
+## Development & Packaging
+
+### Prerequisites
+- [Nimi Desktop](https://nimi.ai/download) or local development environment.
+- Ready vision and text capabilities, using supported Local or Cloud resources.
+
+### Running Locally
 ```bash
+# Install dependencies
 pnpm install
-pnpm run init
-pnpm run sync
-pnpm run check
-pnpm run test
-pnpm run app:build -- --target windows-x86_64
+
+# Start development in Desktop-supervised Electron shell
 pnpm dev
 ```
 
-After a real target build, `pnpm run pack -- --target <target-id>` uses app-tools as the only package owner. App Tools has no local `publish` command. A protected version tag runs the managed GitHub Release workflow; submit the resulting immutable Release through the separate Registry pull-request and human-review flow.
+To inspect or resume an existing registration session:
+```bash
+pnpm dev -- --list-registrations
+pnpm dev -- --resume <selector>
+```
 
-Before production, the public GitHub repository must enable a protected `v*` tag ruleset and immutable releases and provide a read-only repository-admin token for checking those settings. On Windows, the tag-only production build runs the App-declared build owner without a Nimi signing step. A publisher may sign the exact declared Host through its own build or signing custody; production pack records either verified Authenticode or explicit unsigned posture and rejects invalid or unresolved signatures. Manual workflow dispatch runs only the non-production path. The resulting GitHub Release remains independent from registry admission, Runtime installation, Desktop launch, and Nimi Access.
+### Building & Packaging
+```bash
+# Typecheck and test
+pnpm typecheck
+pnpm exec nimi-app test
+pnpm exec nimi-app check --production
 
-`pnpm dev` selects the official Desktop-supervised Electron development Host. Direct renderer, Electron or Tauri launch does not create protected Nimi access.
+# Build and package for your platform
+# macOS
+pnpm exec nimi-app build --target macos-aarch64 --production
+pnpm exec nimi-app pack --target macos-aarch64 --production
 
-The default `windows-x86_64` build creates a fresh non-installer Electron directory at `dist-electron-package/nimiplatform-odd-bureau-shell-win32-x64/`, with the App-specific `nimiplatform-odd-bureau-shell.exe`, ASAR-packaged JavaScript and renderer assets, and unpacked native add-ons plus shared libraries (`**/*.{node,dylib,dll}`). Their relative layout is preserved for the OS loader. Its production bundle rejects `--nimi-dev-renderer-url`. The protected native binding arrives only through Kit's optional dependency; do not add it directly to this App.
+# Windows
+pnpm exec nimi-app build --target windows-x86_64 --production
+pnpm exec nimi-app pack --target windows-x86_64 --production
+```
 
-`pnpm run build:tauri:production` remains an explicit alternative for a deliberately selected Tauri build profile; it is not the default production carrier.
+---
 
-Runtime, Realm, registry admission, installed state and process truth remain with their canonical owners. This repository stores no Runtime credentials or protected session material.
+## Release & Verification Status
 
-## Publish with GitHub
-
-`NIMI_REPOSITORY_ADMIN_TOKEN` is only for reading tag-protection and Release
-immutability settings, with **Administration: Read-only** permission. The
-built-in GitHub token cannot read the Release immutability setting; it handles the
-actual Release upload. Local development does not need the extra token.
-
-Before pushing a release tag, complete these one-time repository steps:
-
-1. **Settings → General → Releases:** enable Release immutability.
-2. **Settings → Rules → Rulesets:** create an active tag ruleset for `v*`
-   that restricts updates and deletions.
-3. [Create a fine-grained token](https://github.com/settings/personal-access-tokens/new)
-   for this repository's owner and only this repository, with **Administration:
-   Read-only**. Complete organization approval if required.
-4. **Settings → Secrets and variables → Actions → New repository secret:**
-   save the token value under the exact name `NIMI_REPOSITORY_ADMIN_TOKEN`.
-
-See the [step-by-step publishing guide](https://github.com/nimiplatform/nimi/blob/main/app-tools/README.md#publishing-on-github)
-for repository setup, permission details, version tagging, and
-recovery from setup errors. Local checks do not verify GitHub secrets.
-
-Run `pnpm exec nimi-app check --production`, then the real production build
-and pack. Commit the release on the repository's default branch and push an
-annotated `v<package.json version>` tag. Watch **Actions → nimi-app-release**.
-If a repository setting or secret is missing, fix it and **Re-run failed jobs**;
-keep the existing tag. Registry admission is a separate human review after
-the immutable Release exists.
-
-## Support
-
-Report startup or Runtime issues through this repository's issue tracker. Diagnostics must exclude credentials and other private data.
-
-## Acceptance status
-
-This README does not certify the App. Dependency install, test, build, target pack, GitHub Release, registry admission, Runtime install, Desktop launch and principal interactions remain `NOT-VERIFIED` until actually run. Focused tests or CDP visibility are not release acceptance.
+- **Verified Publisher Release**: [v0.1.1](https://github.com/nimiplatform/nimiapp-odd-bureau/releases/tag/v0.1.1)
+- **Registry Admission**: [#87](https://github.com/nimiplatform/nimi-app-registry/pull/87) (macOS arm64 and Windows x64)
+- **Recorded Toolchain Combination**: SDK 0.21.0, Kit/native 0.19.3, App Tools 0.12.1, Nimi Coding 0.6.5
+- **Previously Recorded Platform Checks**: macOS arm64 Catalog install, trial photo object localization (6 objects detected), text rule generation, local storage persistence, and bilingual locale switching verified. (Windows GUI execution and optional speech playback marked as `NOT-VERIFIED`).

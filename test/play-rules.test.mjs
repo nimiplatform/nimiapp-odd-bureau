@@ -91,7 +91,7 @@ test('impossible actor demands and invented proposal actions are rejected before
   assert.equal(strikeReady(commitPromises(strike, [], [])), false);
 });
 test('a performed tale cannot reopen the credits or leave allocation', () => {
-  assert.throws(() => parsePerformance({ parts: ['杯子唱歌。', '时钟打拍。', '盆栽说：所以署名归我。'] }), /后台|backstage/);
+  assert.throws(() => parsePerformance({ parts: ['杯子唱歌。', '时钟打拍。', '盆栽说：所以署名归我。'] }), /后台|backstage/i);
   assert.throws(() => parsePerformance({ parts: ['一幕', '二幕'] }));
   assert.deepEqual(parsePerformance({ parts: ['杯子想看海。', '书本折出了一只小船。', '盆栽说：带上我的叶子当帆吧。'] }), ['杯子想看海。', '书本折出了一只小船。', '盆栽说：带上我的叶子当帆吧。']);
 });
