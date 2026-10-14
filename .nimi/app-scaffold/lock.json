@@ -107,12 +107,10 @@
       "index.html",
       "licenses/nimi-app-template.txt",
       "nimi.app.yaml",
-      "README.md",
       "scripts/bundle-electron-preload.mjs",
       "scripts/clean-electron-production.mjs",
       "scripts/package-electron-production.mjs",
       "scripts/validate.mjs",
-      "SECURITY.md",
       "src-electron/main.ts",
       "src-electron/preload.cts",
       "src-tauri/build.rs",
@@ -147,6 +145,8 @@
       "AGENTS.md",
       "LICENSE",
       "package.json",
+      "README.md",
+      "SECURITY.md",
       "src/capabilities/ai-studio-core/ai-config.ts",
       "src/capabilities/ai-studio-core/ai-studio-core.css",
       "src/capabilities/ai-studio-core/audio-separation-request.ts",
@@ -276,17 +276,9 @@
       "class": "scaffold-managed glue",
       "sha256": "d01ca49acd997c09d26a8f52a4300079543c1478262440bc99870daf782c7f31"
     },
-    "README.md": {
-      "class": "scaffold-managed glue",
-      "sha256": "cbfe02c9a65def71a4932a28f837e2a1d733da0759ff156e86485d2fa8d1cdec"
-    },
     "scripts/validate.mjs": {
       "class": "scaffold-managed glue",
       "sha256": "b4f055b1fe7417e1931b12bf89d84e12acdf5c36fe4f901e2073ac8ccf5b332e"
-    },
-    "SECURITY.md": {
-      "class": "scaffold-managed glue",
-      "sha256": "64625407129fa4264fd29d4eae0a78bdf0acb9bae782713a094a55e88653f5e6"
     },
     "src-tauri/build.rs": {
       "class": "scaffold-managed glue",
@@ -402,7 +394,7 @@
     },
     ".nimi/app-scaffold/intent.json": {
       "class": "scaffold-managed glue",
-      "sha256": "cc29fd76800a69674453a25706e058f55eec5aa7c0ae4f677cadfe7c3d64425d"
+      "sha256": "7a0668473caa0065e67f9557611fd7ce1f6b58d53e4c3abe7f6449d088e920c3"
     },
     ".agents/skills/nimi-app-lifecycle/SKILL.md": {
       "class": "scaffold-managed glue",
@@ -426,7 +418,7 @@
     },
     ".agents/skills/nimi-app-lifecycle/references/upgrade-platform.md": {
       "class": "scaffold-managed glue",
-      "sha256": "d0716d2f86a7af67179f5aa14a73d23448ffc0405adc44ed7b0bc592b97ca485"
+      "sha256": "56964c68eb59c5bd41e696e02008a561d47708d17604b8dd90daf73ce12cee1f"
     },
     ".agents/skills/nimi-app-lifecycle/references/sync-upstream.md": {
       "class": "scaffold-managed glue",
@@ -452,7 +444,7 @@
     },
     "package.json": {
       "class": "app-owned product code",
-      "sha256": "52803d651bc600accf1827f31ccb584c265d62a4db32282d3cf7db9b4f964deb"
+      "sha256": "5c09f0cc752a144a6a5f0ab1f96735539ecb4b061c288916181bee67ffe4c9e1"
     },
     ".nimi/config/build-profile.yaml": {
       "class": "app-owned product code",
@@ -465,6 +457,14 @@
     "AGENTS.md": {
       "class": "app-owned product code",
       "sha256": "b8538b6d4c6310b29b9cc76d5a7621cc46d03e57e3907d2103a19ee8f743b2c7"
+    },
+    "README.md": {
+      "class": "app-owned product code",
+      "sha256": "cbfe02c9a65def71a4932a28f837e2a1d733da0759ff156e86485d2fa8d1cdec"
+    },
+    "SECURITY.md": {
+      "class": "app-owned product code",
+      "sha256": "64625407129fa4264fd29d4eae0a78bdf0acb9bae782713a094a55e88653f5e6"
     },
     "src/shell/routes/product-area.tsx": {
       "class": "app-owned product code",
@@ -813,7 +813,7 @@
   },
   "dependencyMatrix": {
     "npm": {
-      "@nimiplatform/app-tools": "^0.12.1",
+      "@nimiplatform/app-tools": "^0.12.4",
       "@nimiplatform/nimi-coding": "0.6.5",
       "@nimiplatform/sdk": "^0.21.0",
       "@nimiplatform/kit": "^0.19.0",

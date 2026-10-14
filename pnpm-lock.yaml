@@ -37,8 +37,8 @@ importers:
         specifier: ^20.3.0
         version: 20.3.0
       '@nimiplatform/app-tools':
-        specifier: ^0.12.1
-        version: 0.12.1(vite@8.3.4(@types/node@24.13.4)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+        specifier: ^0.12.4
+        version: 0.12.4(vite@8.3.4(@types/node@24.13.4)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
       '@nimiplatform/nimi-coding':
         specifier: 0.6.5
         version: 0.6.5
@@ -492,8 +492,8 @@ packages:
     resolution: {integrity: sha512-1DpKU0Z5ThltBwjNySMC14g0CkbyhCaz9FkhxqNsZI6uAPJXFS8cMXlBKo26FJ8ZuW6S9GCMcR9IO5k2X5/9Fg==}
     engines: {node: '>= 12.13.0'}
 
-  '@nimiplatform/app-tools@0.12.1':
-    resolution: {integrity: sha512-ruReYIQsrMo8DyedleXgq1ZdahC1E2kFn4GJlpA1LVct3FzTbaIiM6rLPjM30UbLLHzlfqG4ESgyjeOReTadkA==}
+  '@nimiplatform/app-tools@0.12.4':
+    resolution: {integrity: sha512-WQJH4qtQymkT0pLMWgUGxETFKL+6nvpkbmtTKu4HGkuxWfRdm86jEASD7bKtGA4YIe9PzBPwa/XGrGc+qjUNlg==}
     engines: {node: '>=24.0.0'}
     hasBin: true
     peerDependencies:
@@ -2560,7 +2560,7 @@ snapshots:
     dependencies:
       cross-spawn: 7.0.6
 
-  '@nimiplatform/app-tools@0.12.1(vite@8.3.4(@types/node@24.13.4)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))':
+  '@nimiplatform/app-tools@0.12.4(vite@8.3.4(@types/node@24.13.4)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))':
     dependencies:
       pngjs: 7.0.0
       semver: 7.8.5

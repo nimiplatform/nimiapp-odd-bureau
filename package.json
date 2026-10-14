@@ -56,7 +56,7 @@
     "typescript": "^5.9.3",
     "vite": "^8.3.3",
     "yaml": "^2.9.0",
-    "@nimiplatform/app-tools": "^0.12.1",
+    "@nimiplatform/app-tools": "^0.12.4",
     "@nimiplatform/nimi-coding": "0.6.5"
   },
   "license": "MIT",
