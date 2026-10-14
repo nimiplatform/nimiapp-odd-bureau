@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
 import ts from 'typescript';
 import { resolveLanguage, supportsLanguage } from '../src/odd-bureau/i18n.js';
@@ -31,9 +33,10 @@ test('every English message preserves its Chinese interpolation slots', () => {
 
 // Render real components, with rule fixtures only for deterministic views.
 // This is presentation/contract testing, not a claim of protected App acceptance.
-const root = new URL('../', import.meta.url).pathname;
-const output = `${root}.nimi/local/i18n-test-view.mjs`;
-mkdirSync(`${root}.nimi/local`, { recursive: true });
+const root = fileURLToPath(new URL('../', import.meta.url));
+const artifactDirectory = join(root, '.nimi', 'local');
+const output = join(artifactDirectory, 'i18n-test-view.mjs');
+mkdirSync(artifactDirectory, { recursive: true });
 await build({
   stdin: { contents: `
 import React from 'react';
@@ -66,7 +69,7 @@ for (const [systemLanguage, expected] of [['en-US', 'en'], ['zh-CN', 'zh'], ['zh
   test(`interface, names, and generation follow system ${systemLanguage}`, () => {
     const result = spawnSync(process.execPath, ['--input-type=module', '-e', `
 Object.defineProperty(globalThis, 'navigator', {value:{language:${JSON.stringify(systemLanguage)}}, configurable:true});
-const {inspect,parsePerformance}=await import(${JSON.stringify(output)});
+const {inspect,parsePerformance}=await import(${JSON.stringify(pathToFileURL(output).href)});
 const result=inspect();
 for(const forbidden of ['The strike began.', 'They gave him credit.', '她拿到了署名。']) {
  let rejected=false; try {parsePerformance({parts:[forbidden,'The cup went sailing.','It found a friend.']})} catch {rejected=true}
@@ -86,13 +89,13 @@ console.log(JSON.stringify(result));`], { encoding: 'utf8', cwd: root });
     assert.ok(data.views.home.includes(expected === 'zh' ? '让日常' : 'Let everyday life'));
     assert.ok(data.views.setup.includes(expected === 'zh' ? '给游乐场接通 AI' : 'Connect the playground to AI'));
     assert.equal(data.carrier, expected === 'zh' ? '此 App 需要连接 Nimi' : 'This App needs Nimi');
-    writeFileSync(`${root}.nimi/local/i18n-${systemLanguage}.json`, JSON.stringify(data, null, 2));
+    writeFileSync(join(artifactDirectory, `i18n-${systemLanguage}.json`), JSON.stringify(data, null, 2));
   });
 }
 
 test('all product message calls are present in the English catalog', () => {
   for (const name of ['App.tsx','Playground.tsx','Setup.tsx','PhotoStage.tsx','MachineGame.tsx','StrikeGame.tsx','game.ts','play-rules.ts','play-runtime.ts','nimi.ts','tone-player.ts']) {
-    const path=`${root}src/odd-bureau/${name}`;
+    const path=join(root, 'src', 'odd-bureau', name);
     const source=ts.createSourceFile(path,readFileSync(path,'utf8'),ts.ScriptTarget.Latest,true);
     const visit=node=>{
       if(ts.isCallExpression(node)&&node.expression.getText(source)==='t') {
