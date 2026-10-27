@@ -12,6 +12,7 @@ export const generatedNavigationGroups: readonly WorkbenchNavigationGroup<string
     })),
   })),
 ]);
+export const generatedHistoryViewIds: readonly string[] = Object.freeze(generatedAIStudioModules.flatMap(module => module.capabilities.map(registration => registration.descriptor.id)));
 export const generatedInitialViewId = generatedNavigationGroups[0]?.items[0]?.id ?? null;
 export const hasGeneratedViews = generatedInitialViewId !== null;
 export function isGeneratedViewId(viewId: string): boolean {

@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packager } from '@electron/packager';
+import { prepareElectronIcons } from './app-icons.mjs';
 import { build } from 'esbuild';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
@@ -87,6 +88,7 @@ const packagerTempRoot = path.join(stagingRoot, 'packager');
 let packageCompleted = false;
 
 try {
+  const icons = prepareElectronIcons(appRoot, { required: true });
   await build({
     entryPoints: [path.join(appRoot, 'src-electron/main.ts')],
     outfile: path.join(appRoot, 'dist-electron/main.js'),
@@ -118,6 +120,9 @@ try {
   await cp(path.join(appRoot, 'dist'), path.join(productionSourceRoot, 'dist'), { recursive: true, force: false });
   await copyFile(path.join(appRoot, 'dist-electron', 'main.js'), path.join(productionSourceRoot, 'dist-electron', 'main.js'));
   await copyFile(path.join(appRoot, 'dist-electron', 'preload.cjs'), path.join(productionSourceRoot, 'dist-electron', 'preload.cjs'));
+  await copyFile(icons.png, path.join(productionSourceRoot, 'dist-electron', 'app-icon.png'));
+  await copyFile(icons.macPng, path.join(productionSourceRoot, 'dist-electron', 'app-icon-macos.png'));
+  await copyFile(icons.ico, path.join(productionSourceRoot, 'dist-electron', 'app-icon.ico'));
   await installProductionDependencies(productionSourceRoot);
 
   const productionManifestPath = path.join(productionSourceRoot, 'package.json');
@@ -138,6 +143,7 @@ try {
 
   const packagePaths = await packager({
     dir: productionSourceRoot,
+    icon: MACOS_BUILD ? icons.icns : icons.ico,
     platform: NATIVE_PLATFORM,
     arch: NATIVE_ARCH,
     appBundleId: "ai.nimi.apps.nimi.odd-bureau",

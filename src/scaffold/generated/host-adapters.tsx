@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useNimiNavigationSnapshot } from '@nimiplatform/kit/ui/app-chrome';
 import type { NimiAIConfigSnapshot } from '@nimiplatform/sdk/ai';
 import { createNimiClientId } from '@nimiplatform/sdk/types';
 import { ModelConfigAIConfigSurface } from '@nimiplatform/kit/features/model-config';
@@ -408,9 +409,10 @@ export function GeneratedAIStudioHost({
   onSelectCapability,
   children,
 }: {
-  readonly onSelectCapability: (capabilityId: string) => void;
+  readonly onSelectCapability: (capabilityId: string, runId?: string) => void;
   readonly children: ReactNode;
 }) {
+  const snapshot = useNimiNavigationSnapshot<{ id: string; runId?: string }>();
   const [runtime, setRuntime] = useState<StudioRuntimeInspection | null>(null);
   useEffect(() => {
     let active = true;
@@ -421,6 +423,7 @@ export function GeneratedAIStudioHost({
     historyRepository,
     registrations: generatedAIStudioRegistrations,
     onSelectCapability,
+    historyPosition: snapshot.current.destination.runId ? { runId: snapshot.current.destination.runId, entryKey: snapshot.current.key, capabilityId: snapshot.current.destination.id } : undefined,
     translate,
   });
   const state = useMemo(() => ({ runtime, controller }), [controller, runtime]);

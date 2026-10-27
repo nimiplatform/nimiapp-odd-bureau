@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { app, BrowserWindow, ipcMain, Menu, protocol, session, webContents } from 'electron';
 import { configureNimiElectronAppHostProfile } from '@nimiplatform/kit/shell/electron/host-profile';
@@ -18,7 +19,8 @@ try {
 }
 
 const {
-  createNimiElectronStandardApplicationMenuTemplate,
+  createNimiElectronAppChromeHost,
+  createNimiElectronAppChromeWindowOptions,
   isAllowedElectronRendererUrl,
   registerNimiElectronAppAssetProtocolScheme,
   registerNimiElectronAppBridge,
@@ -30,6 +32,9 @@ const IS_PRODUCTION_BUNDLE = typeof __NIMI_ELECTRON_PRODUCTION__ !== 'undefined'
   && __NIMI_ELECTRON_PRODUCTION__;
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const appRoot = path.resolve(currentDir, '..');
+const appIconPath = path.join(currentDir, process.platform === 'win32' ? 'app-icon.ico' : process.platform === 'darwin' ? 'app-icon-macos.png' : 'app-icon.png');
+if (IS_PRODUCTION_BUNDLE && !existsSync(appIconPath)) throw new Error('Packaged App icon is missing.');
+const windowIcon = existsSync(appIconPath) ? appIconPath : undefined;
 const preloadPath = path.join(currentDir, 'preload.cjs');
 const productionRendererUrl = pathToFileURL(path.join(appRoot, 'dist', 'index.html')).toString();
 const developmentRendererUrl = readDevelopmentRendererUrl();
@@ -39,15 +44,20 @@ let resettingRenderer = false;
 let quitting = false;
 
 app.setName("奇物局");
-app.setAppUserModelId(NATIVE_BUNDLE_IDENTIFIER);
-// macOS routes Cmd+C/V/X/A/Z and Cmd+Q through application menu roles.
-Menu.setApplicationMenu(Menu.buildFromTemplate(
-  createNimiElectronStandardApplicationMenuTemplate({ appName: "奇物局" }),
-));
+if (process.platform === 'win32') {
+  app.setAppUserModelId(IS_PRODUCTION_BUNDLE ? NATIVE_BUNDLE_IDENTIFIER : `ai.nimi.dev.apps.${APP_ID}`);
+}
+const chromeHost = createNimiElectronAppChromeHost({
+  metadata: { name: "奇物局", version: "0.1.1" },
+  allowedRendererUrls, app,
+  menu: { buildFromTemplate: template => Menu.buildFromTemplate(template as Electron.MenuItemConstructorOptions[]), setApplicationMenu: menu => Menu.setApplicationMenu(menu as Electron.Menu | null) },
+});
 registerNimiElectronAppAssetProtocolScheme(protocol);
 
 void app.whenReady().then(async () => {
+  if (process.platform === 'darwin' && !IS_PRODUCTION_BUNDLE && windowIcon) app.dock?.setIcon(windowIcon);
   registerNimiElectronAppBridge({
+    chromeHost,
     appId: APP_ID,
     allowedRendererUrls,
     assetMediaPlatform: { protocol, webRequest: session.defaultSession.webRequest, webContents },
@@ -81,11 +91,13 @@ function resetAccountScopedRenderer(): void {
 
 async function createMainWindow(): Promise<void> {
   const window = new BrowserWindow({
+    ...createNimiElectronAppChromeWindowOptions(),
     width: 1180,
     height: 780,
     minWidth: 360,
     minHeight: 560,
     title: "奇物局",
+    icon: windowIcon,
     autoHideMenuBar: true,
     webPreferences: {
       preload: preloadPath,
@@ -94,6 +106,7 @@ async function createMainWindow(): Promise<void> {
       sandbox: true,
     },
   });
+  chromeHost.bindWindow(window);
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, url) => {
     if (!isAllowedElectronRendererUrl(url, allowedRendererUrls)) event.preventDefault();

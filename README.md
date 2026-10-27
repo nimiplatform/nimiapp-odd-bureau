@@ -1,3 +1,9 @@
+Current development dependencies are SDK 0.22.2, Kit/native 0.22.1, App Tools 0.14.0 and Nimi Coding 0.7.0. The checked-in pnpm lock resolves these packages from the public registry. Run `pnpm install --frozen-lockfile`, `pnpm exec nimi-app check`, then `pnpm dev` with a matching source-built Nimi Runtime and Home. App versions and published App releases are unchanged. Earlier versioned notes retain their original acceptance scope. Home uses the App-owned root `NIMI_APP.md`; this README remains developer documentation.
+
+Upgrade verification: public-registry installation, frozen-lockfile installation, App Tools checks and the applicable type/Host build checks passed. Desktop-supervised macOS development opened the saved playground and AI configuration. New model-output journeys and packaged installation were not rerun; earlier evidence below retains its stated versions and scope.
+
+[App introduction and usage](NIMI_APP.md)
+
 # Odd Bureau (奇物局)
 
 > Transform everyday objects in your photos into lively characters with quirks, personalities, and voices.
@@ -37,6 +43,12 @@ Saved photos and game progress live in local Nimi App storage. Starting new obje
 ---
 
 ## Development & Packaging
+
+The current source uses SDK 0.21, Kit 0.21 and the standard App navigation/chrome contract. One window-local controller owns the playground, saved round, settings and mystery destinations; business saves and photo data remain unchanged. Navigation retains mounted drafts and stops media when its view is hidden.
+
+App Tools 0.13.2 and the compatible Kit 0.21.1 chrome teardown patch are selected through explicit local tarball overrides in `pnpm-workspace.yaml`. Kit 0.21.1 backports canonical fix `6b3ef1116` onto the complete published 0.21.0 package; its public declarations, SDK 0.21 and native carrier dependencies are unchanged. The complete archives are under `.nimi/local/platform-icons/`; these are development packages, not public releases. A clean checkout must receive the same complete archives before installation, or switch to their published registry versions when available. Production release preflight requires registry resolutions.
+
+`metadata.icon` remains the portable artwork shown in Nimi Home. `build:electron` derives the macOS Dock PNG/ICNS and Windows multi-resolution ICO separately; packaged builds embed their platform icon. Home must not receive the padded macOS export.
 
 ### Prerequisites
 - [Nimi Desktop](https://nimi.ai/download) or local development environment.

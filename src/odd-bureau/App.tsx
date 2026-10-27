@@ -15,7 +15,7 @@ function PropPortrait({ prop, photo, className = '' }: { prop: Prop; photo: Phot
   </svg>;
 }
 
-export function OddBureau({ onExit }: { onExit?: () => void } = {}) {
+export function OddBureau({ onExit, active = true, onBusyChange }: { onExit?: () => void; active?: boolean; onBusyChange?: (busy: boolean) => void } = {}) {
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [mood, setMood] = useState<MoodId>('missing');
@@ -48,6 +48,8 @@ export function OddBureau({ onExit }: { onExit?: () => void } = {}) {
   const saveQueue = useRef(Promise.resolve());
   const chatBottom = useRef<HTMLDivElement>(null);
   const busy = booting || !!stage || talking;
+  useEffect(() => { onBusyChange?.(active && busy); return () => onBusyChange?.(false); }, [active, busy, onBusyChange]);
+  useEffect(() => { if (!active) stopVoice(); }, [active]);
   async function checkConfiguration() {
     try { setConfigured(isConfigured(await getClient().aiConfig.get())); }
     catch { setConfigured(false); }

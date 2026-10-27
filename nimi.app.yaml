@@ -20,7 +20,6 @@ storage_policy:
 metadata:
   summary: 把照片里的物件变成有性格的角色，调查奇物谜案、编排音乐机关和一场物件戏剧。
   icon: assets/app-icon.png
-  readme: APP_GUIDE.md
   release_notes: RELEASE_NOTES.md
   author: Nimi Team
   homepage_url: https://github.com/nimiplatform/nimiapp-odd-bureau

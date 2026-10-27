@@ -9,7 +9,7 @@ import { actionText, commitPromises, findStrikeSolution, offerText, strikeReady,
 import { ObjectPortrait, PhotoStage } from './PhotoStage.js';
 
 // @nimi-authority: rule.odd-bureau.playground.promises
-export function StrikeGame({ photo, objects, round, onChange, onRestart }: { photo: Photo; objects: Prop[]; round: StrikeRound; onChange: (round: StrikeRound) => void; onRestart: () => void }) {
+export function StrikeGame({ photo, objects, round, onChange, onRestart, active = true }: { photo: Photo; objects: Prop[]; round: StrikeRound; onChange: (round: StrikeRound) => void; onRestart: () => void; active?: boolean }) {
   const [selected, setSelected] = useState(objects[0].id), [message, setMessage] = useState(''), [proposal, setProposal] = useState<{ reply: string; actions: PromiseAction[] } | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState(''), [voice, setVoice] = useState<'idle' | 'loading' | 'playing'>('idle');
   const request = useRef<AbortController | null>(null), voiceRequest = useRef<AbortController | null>(null), audio = useRef<HTMLAudioElement | null>(null);
   const proposalPanel = useRef<HTMLDivElement>(null);
@@ -23,6 +23,7 @@ export function StrikeGame({ photo, objects, round, onChange, onRestart }: { pho
   const proposalEndsRound = preview ? !findStrikeSolution(plan, preview.promises) : false;
   function stopVoice() { voiceRequest.current?.abort(); voiceRequest.current = null; if (audio.current) { const url = audio.current.src; audio.current.pause(); audio.current = null; URL.revokeObjectURL(url); } setVoice('idle'); }
   useEffect(() => () => { request.current?.abort(); voiceRequest.current?.abort(); if (audio.current) { audio.current.pause(); URL.revokeObjectURL(audio.current.src); } }, []);
+  useEffect(() => { if (!active) { request.current?.abort(); stopVoice(); } }, [active]);
   useEffect(() => { if (proposal) proposalPanel.current?.scrollIntoView({ block: 'nearest' }); }, [proposal]);
   function propose(action: PromiseAction) { setError(''); setProposal({ reply: t("先看看这份安排的影响，确认后才算承诺。"), actions: [action] }); }
   function confirm() {

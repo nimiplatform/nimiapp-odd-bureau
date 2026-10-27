@@ -14,12 +14,13 @@ export function Notes({ notes, label }: { notes: readonly Note[]; label?: string
     {!notes.length && <span className="empty-notes">{t("还没有声音")}</span>}
   </div>;
 }
-export function MachineGame({ photo, objects, round, onChange }: { photo: Photo; objects: Prop[]; round: MachineRound; onChange: (round: MachineRound) => void }) {
+export function MachineGame({ photo, objects, round, onChange, active = true }: { photo: Photo; objects: Prop[]; round: MachineRound; onChange: (round: MachineRound) => void; active?: boolean }) {
   const [selected, setSelected] = useState<string | null>(null), [error, setError] = useState(''), [playing, setPlaying] = useState(false), [sound, setSound] = useState(true);
   const player = useRef(new TonePlayer()), playId = useRef(0), latest = useRef(round);
   const mobileDetail = useRef<HTMLDivElement>(null);
   latest.current = round;
   useEffect(() => () => { playId.current++; player.current.stop(); }, []);
+  useEffect(() => { if (!active) stop(); }, [active]);
   useEffect(() => { if (selected && window.matchMedia('(max-width: 850px)').matches) mobileDetail.current?.scrollIntoView({ block: 'nearest' }); }, [selected]);
   const { plan, state } = round;
   const goal = useMemo(() => machineChallenge(plan, objects), [plan, objects]);

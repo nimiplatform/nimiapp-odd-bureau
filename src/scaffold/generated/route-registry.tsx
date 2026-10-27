@@ -7,7 +7,7 @@ export function GeneratedModuleHost({
   onSelectView,
   children,
 }: {
-  readonly onSelectView: (viewId: string) => void;
+  readonly onSelectView: (viewId: string, runId?: string) => void;
   readonly children: ReactNode;
 }) {
   return <GeneratedAIStudioHost onSelectCapability={onSelectView}>{children}</GeneratedAIStudioHost>;
@@ -18,7 +18,7 @@ export function GeneratedRouteRegistry({
   onSelectView,
 }: {
   readonly activeViewId: string;
-  readonly onSelectView: (viewId: string) => void;
+  readonly onSelectView: (viewId: string, runId?: string) => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => { rootRef.current?.focus(); }, [activeViewId]);
