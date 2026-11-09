@@ -1,4 +1,4 @@
-import type { StudioAudioSeparation, StudioFaceSwap, StudioJsonValue, StudioMusicGeneration, StudioMusicTranscription, StudioSessionSummary, StudioTextDecisionAnswer, StudioTextExchangeStep, StudioVoiceConversion } from './runtime-types.js';
+import type { StudioEmbeddingRetrieval, StudioAudioSeparation, StudioFaceSwap, StudioJsonValue, StudioMusicGeneration, StudioMusicTranscription, StudioSessionSummary, StudioTextDecisionAnswer, StudioTextExchangeStep, StudioVoiceConversion } from './runtime-types.js';
 import { isJsonObject } from '@nimiplatform/sdk/types';
 import { studioResultAssetReferences } from './managed-result-references.js';
 import type { NimiLocalAppSpeechTranscript, NimiLocalAppVisionLocateResult } from '@nimiplatform/sdk/app';
@@ -72,6 +72,7 @@ export type StudioRunHistoryResultSnapshot =
   | {
       ok: true;
       kind: 'embedding';
+      retrieval?: StudioEmbeddingRetrieval;
       summary: string;
       vectorCount: number;
       dimensions: number;
@@ -149,7 +150,7 @@ export type StudioRunHistoryResultSnapshot =
       ok: true;
       kind: 'text-exchange';
       summary: string;
-      scenario: 'tool-call' | 'structured-output';
+      scenario: 'tool-call' | 'structured-output' | 'json-object';
       steps: StudioTextExchangeStep[];
       text: string;
       structured?: StudioJsonValue;
@@ -590,6 +591,7 @@ export function createStudioRunHistoryResultSnapshot(result: StudioCapabilityRun
       dimensions: output.dimensions,
       ...(output.spaceId ? { spaceId: output.spaceId } : {}),
       sample: output.sample,
+      ...(output.retrieval ? { retrieval: structuredClone(output.retrieval) } : {}),
       totalTokens: output.totalTokens,
       ...trace,
     };
@@ -641,6 +643,8 @@ export function createStudioRunHistoryResultSnapshot(result: StudioCapabilityRun
       endedAt: output.endedAt,
       ending: output.ending,
       terminalReason: output.terminalReason,
+      ...(output.audioUsage ? { audioUsage: { ...output.audioUsage } } : {}),
+      ...(output.closure ? { closure: { ...output.closure } } : {}),
       observed: { ...output.observed },
       ...trace,
     };
@@ -769,6 +773,7 @@ export function restoreStudioCapabilityRunResult(
         dimensions: snapshot.dimensions,
         ...(snapshot.spaceId ? { spaceId: snapshot.spaceId } : {}),
         sample: snapshot.sample,
+        ...(snapshot.retrieval ? { retrieval: structuredClone(snapshot.retrieval) } : {}),
         totalTokens: snapshot.totalTokens,
       },
     };
@@ -815,6 +820,8 @@ export function restoreStudioCapabilityRunResult(
         endedAt: snapshot.endedAt,
         ending: snapshot.ending,
         terminalReason: snapshot.terminalReason,
+          ...(snapshot.audioUsage ? { audioUsage: { ...snapshot.audioUsage } } : {}),
+          ...(snapshot.closure ? { closure: { ...snapshot.closure } } : {}),
         observed: { ...snapshot.observed },
       },
     };
@@ -1076,6 +1083,7 @@ export function getStudioRunHistoryExportText(record: StudioRunHistoryRecord): s
   if (!snapshot.ok) return snapshot.message;
   if (snapshot.kind === 'text' || snapshot.kind === 'transcript') return snapshot.body;
   if (snapshot.kind === 'text-exchange') return snapshot.text;
+  if (snapshot.kind === 'embedding' && snapshot.retrieval) return JSON.stringify({ spaceId: snapshot.spaceId, dimensions: snapshot.dimensions, retrieval: snapshot.retrieval }, null, 2);
   if (snapshot.kind === 'speaker-embedding') return JSON.stringify({ jobId: snapshot.jobId, spaceId: snapshot.spaceId, vector: snapshot.vector }, null, 2);
   if (snapshot.kind === 'text-decision' && snapshot.answers) return JSON.stringify({ answers: snapshot.answers }, null, 2);
   return snapshot.summary;

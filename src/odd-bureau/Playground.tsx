@@ -1,3 +1,4 @@
+import { useBureauScope } from './use-bureau-scope.js';
 import { t, language } from './i18n.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNimiNavigationSnapshot } from '@nimiplatform/kit/ui/app-chrome';
@@ -7,7 +8,7 @@ import { Button, IconButton } from '@nimiplatform/kit/ui';
 import { ArrowLeft, ArrowRight, AudioLines, Fingerprint, ImagePlus, MessageCircle, Search, Settings2, Sparkles, X } from 'lucide-react';
 import { OddBureau } from './App.js';
 import type { Prop } from './game.js';
-import { errorMessage, getClient, photoFromFile, samplePhoto, type Photo } from './nimi.js';
+import { errorMessage, photoFromFile, samplePhoto, type Photo } from './nimi.js';
 import { Setup, isConfigured } from './Setup.js';
 import { MachineGame } from './MachineGame.js';
 import { StrikeGame } from './StrikeGame.js';
@@ -17,6 +18,7 @@ import type { PlayRound, PlaySave } from './play-rules.js';
 import './playground.css';
 
 export function Playground() {
+  const scope = useBureauScope();
   const { navigation, setLeaveGuard } = useAppNavigation();
   const route = useNimiNavigationSnapshot<OddBureauDestination>().current.destination.id;
   const [visitedSetup, setVisitedSetup] = useState(false), [visitedMystery, setVisitedMystery] = useState(false);
@@ -29,7 +31,7 @@ export function Playground() {
   const file = useRef<HTMLInputElement>(null), photoRef = useRef<Photo | null>(null), saveRef = useRef<PlaySave | null>(null), operation = useRef<AbortController | null>(null), photoRequest = useRef<AbortController | null>(null), writeQueue = useRef(Promise.resolve());
   const unavailable = loading || busy;
   function replacePhoto(next: Photo) { if (photoRef.current) URL.revokeObjectURL(photoRef.current.url); photoRef.current = next; setPhoto(next); }
-  async function checkConfig() { try { setConfigured(isConfigured(await getClient().aiConfig.get())); } catch { setConfigured(false); } }
+  async function checkConfig() { try { setConfigured(isConfigured(await scope.client.aiConfig.get())); } catch { setConfigured(false); } }
   function settings() { void navigation.push({ id: 'setup' }); }
   useEffect(() => {
     if (route === 'setup') setVisitedSetup(true);
@@ -43,7 +45,7 @@ export function Playground() {
   function persist(next: PlaySave, image = photoRef.current) {
     if (!image) return;
     writeQueue.current = writeQueue.current.then(async () => {
-      const stored = await persistPlay(next, image);
+      const stored = await persistPlay(scope, next, image);
       if (saveRef.current?.id === next.id) {
         const current = { ...saveRef.current, photoPath: stored.photoPath };
         saveRef.current = current; setSave(current); setSaveNote('');
@@ -60,7 +62,7 @@ export function Playground() {
     void checkConfig();
     void (async () => {
       try {
-        const restored = await restorePlay();
+        const restored = await restorePlay(scope);
         if (!live) { if (restored) URL.revokeObjectURL(restored.photo.url); return; }
         if (restored) { replacePhoto(restored.photo); saveRef.current = restored.save; setSave(restored.save); setKind(restored.save.round.kind); void navigation.replace({ id: 'round', roundId: restored.save.id }); return; }
       } catch (e) { if (live && !(typeof e === 'object' && e !== null && 'reasonCode' in e && e.reasonCode === 'not-found')) setSaveNote(t("上次的游乐场没有完整读到，仍可用新照片开一局。")); }
@@ -88,7 +90,7 @@ export function Playground() {
     const controller = new AbortController(); operation.current = controller;
     setBusy(true); setFound([]); setError(''); setStatus(t("正在认领照片里的物品…"));
     try {
-      const next = await preparePlay(photo, kind, controller.signal, setStatus, setFound);
+      const next = await preparePlay(scope, photo, kind, controller.signal, setStatus, setFound);
       controller.signal.throwIfAborted(); saveRef.current = next; setSave(next); persist(next, photo); void navigation.push({ id: 'round', roundId: next.id });
     } catch (e) { if (!controller.signal.aborted) setError(errorMessage(e)); }
     finally { if (operation.current === controller) { operation.current = null; setBusy(false); setStatus(''); } }
@@ -106,7 +108,7 @@ export function Playground() {
             {busy && <div className="play-preparing" role="status" aria-live="polite"><Fingerprint size={38}/><h2>{status}</h2><p>{found.length ? t("{0} 已经到场。", found.map(p => p.label).join('、')) : t("先看看照片里都有谁。")}</p><Button className="cancel-key" onClick={() => operation.current?.abort()}>{t("取消，照片留着")}</Button></div>}
           </PhotoStage> : <div className="play-photo-empty"><ImagePlus size={43}/><p>{loading ? t("正在打开游乐场…") : t("选一张桌面或房间照片，从这里开始。")}</p><Button className="quiet-button" disabled={unavailable} onClick={() => file.current?.click()}>{t("选照片")}</Button></div>}
           <aside className="activity-panel lobby-panel"><h2>{t("今天，怎么闹？")}</h2><p className="lobby-description">{t("每件物品都会有自己的本领和脾气。")}<br/>{t("这次由你来改变局面。")}</p><div className="activity-choices" role="group" aria-label={t("选择玩法")}><button className={kind === 'machine' ? 'selected' : ''} aria-pressed={kind === 'machine'} disabled={unavailable} onClick={() => setKind('machine')}><AudioLines size={26}/><span><strong>{t("怪机器")}</strong><b>{t("把滴答装进杯子。")}</b><small>{t("连起物品，听听你的发明。")}</small></span><ArrowRight size={18}/></button><button className={kind === 'strike' ? 'selected' : ''} aria-pressed={kind === 'strike'} disabled={unavailable} onClick={() => setKind('strike')}><MessageCircle size={26}/><span><strong>{t("罢工谈判")}</strong><b>{t("这张桌子不干了。")}</b><small>{t("谈条件、许承诺，把故事会办起来。")}</small></span><ArrowRight size={18}/></button></div>
-            <div className="lobby-cta"><Button className="primary-key" trailingIcon={<ArrowRight size={19}/>} disabled={unavailable || !photo} onClick={() => void begin()}>{loading ? t("正在打开照片…") : busy ? t("正在让物品登场…") : !configured ? t("接通 AI，准备开玩") : kind === 'machine' ? t("用这张照片，造台怪机器") : t("用这张照片，谈一场罢工")}</Button><Button className="upload-key" leadingIcon={<ImagePlus size={17}/>} disabled={unavailable} onClick={() => file.current?.click()}>{t("换成我的照片")}</Button>{save && <button className="resume-play" disabled={unavailable} onClick={() => void navigation.push({ id: 'round', roundId: save.id })}>{t("继续上次的")}{save.round.kind === 'machine' ? t("怪机器") : t("故事会")}<ArrowRight size={14}/></button>}</div><p className="lobby-footnote">{t("先用这张试玩照片体验。")}<br/>{t("自己的杯子、书、灯，也能成为主角。")}</p>
+            <div className="lobby-cta"><Button className="primary-key" trailingIcon={<ArrowRight size={19}/>} disabled={unavailable || !photo} onClick={() => void begin()}>{loading ? t("正在打开照片…") : busy ? t("正在让物品登场…") : !configured ? t("接通 AI，准备开玩") : kind === 'machine' ? t("用这张照片，造台怪机器") : t("用这张照片，谈一场罢工")}</Button><Button className="upload-key" leadingIcon={<ImagePlus size={17}/>} disabled={unavailable} onClick={() => file.current?.click()}>{t("换成我的照片")}</Button>{save && <button className="resume-play" disabled={unavailable} onClick={() => void navigation.push({ id: 'round', roundId: save.id })}>{t("继续上次的")}{save.round.kind === 'machine' ? t("怪机器") : t("故事会")}<ArrowRight size={14}/></button>}</div>{photo?.source === 'sample' && <p className="lobby-footnote">{t("先用这张试玩照片体验。")}<br/>{t("自己的杯子、书、灯，也能成为主角。")}</p>}
           </aside>
         </div>
       </main></div>

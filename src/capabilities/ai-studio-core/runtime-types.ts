@@ -14,6 +14,11 @@ export type StudioTrace = {
   readonly traceId?: string;
 };
 
+export type StudioEmbeddingRetrieval = {
+  readonly query: string;
+  readonly matches: readonly { readonly inputIndex: number; readonly excerpt: string; readonly score: number }[];
+};
+
 export type StudioManagedArtifact = {
   readonly relativePath: string;
   readonly mediaType?: string;
@@ -112,6 +117,8 @@ export type StudioTextDecisionAnswer =
   | { readonly questionId: string; readonly kind: 'boolean'; readonly trueProbability: number };
 
 export type StudioSessionSummary = {
+  readonly audioUsage?: { readonly audioSeconds: number; readonly final: boolean };
+  readonly closure?: { readonly localResourcesReleased: boolean; readonly providerSessionClosed: boolean };
   readonly capabilityContract: string;
   readonly startedAt: string;
   readonly endedAt: string;
@@ -125,12 +132,12 @@ export type StudioTypedOutput =
   | { readonly kind: 'vision-locate'; readonly jobId: string; readonly result: NimiLocalAppVisionLocateResult; readonly sourceImage?: StudioManagedArtifact; readonly imagePreviewUrl?: string }
   | { readonly kind: 'text'; readonly text: string; readonly finishReason: string; readonly inputTokens?: number; readonly outputTokens?: number; readonly totalTokens?: number; readonly streamed: boolean; readonly sourceImage?: StudioManagedArtifact }
   // spaceId is absent only on records saved before the result retained it.
-  | { readonly kind: 'embedding'; readonly vectorCount: number; readonly dimensions: number; readonly spaceId?: string; readonly sample: number[]; readonly totalTokens?: number }
+  | { readonly kind: 'embedding'; readonly vectorCount: number; readonly dimensions: number; readonly spaceId?: string; readonly sample: number[]; readonly totalTokens?: number; readonly retrieval?: StudioEmbeddingRetrieval }
   | { readonly kind: 'artifacts'; readonly sourceImage?: StudioManagedArtifact; readonly musicGeneration?: StudioMusicGeneration; readonly musicTranscription?: StudioMusicTranscription; readonly voiceConversion?: StudioVoiceConversion; readonly audioSeparation?: StudioAudioSeparation; readonly faceSwap?: StudioFaceSwap; readonly jobId: string; readonly jobState: string; readonly artifactCount: number; readonly artifacts: StudioManagedArtifact[]; readonly firstArtifact?: StudioManagedArtifact }
   // The complete annotation lives in the saved document; it is attached only
   // after the current run or a verified read of that document.
   | { readonly kind: 'text-annotation'; readonly jobId: string; readonly jobState: string; readonly language: string; readonly documentCount: number; readonly tokenCount: number; readonly sentenceCount: number; readonly document: StudioManagedArtifact; readonly annotation?: NimiLocalAppTextAnnotationResult }
-  | { readonly kind: 'text-exchange'; readonly scenario: 'tool-call' | 'structured-output'; readonly steps: readonly StudioTextExchangeStep[]; readonly text: string; readonly structured?: StudioJsonValue }
+  | { readonly kind: 'text-exchange'; readonly scenario: 'tool-call' | 'structured-output' | 'json-object'; readonly steps: readonly StudioTextExchangeStep[]; readonly text: string; readonly structured?: StudioJsonValue }
   | { readonly kind: 'text-decision'; readonly answers: readonly StudioTextDecisionAnswer[] }
   | ({ readonly kind: 'session' } & StudioSessionSummary)
   | { readonly kind: 'transcript'; readonly text: string; readonly jobId: string; readonly jobState: string; readonly artifactCount: number; readonly transcription?: NimiLocalAppSpeechTranscript }

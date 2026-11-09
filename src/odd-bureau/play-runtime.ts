@@ -1,18 +1,27 @@
+import type { NimiAppScope } from '@nimiplatform/kit/core/app-session';
+import { readNimiAppAssetBlob } from '@nimiplatform/kit/core/app-asset-media';
 import { t, language } from './i18n.js';
 import type { Prop } from './game.js';
-import { getClient, locatePhoto, photoFromFile, rememberInventory, textTurn, type Photo } from './nimi.js';
+import { readSavedDocument, locatePhoto, photoFromFile, rememberInventory, textTurn, type Photo } from './nimi.js';
 import { commitPromises, proposalPrompt, performancePrompt, initialMachine, jsonObject, machinePrompt, parseActions, parseMachine, parsePerformance, parseStrike, parsePlaySave, shortText, strikePrompt, strikeReady, type PlaySave, type PlayRound, type PromiseAction, type StrikePlan } from './play-rules.js';
 import type { JsonValue } from '@nimiplatform/sdk/types';
 
-const photoPaths = new WeakMap<Blob, string>();
+const photoPaths = new WeakMap<NimiAppScope['client'], WeakMap<Blob, string>>();
+function pathsFor(scope: NimiAppScope) {
+  let paths = photoPaths.get(scope.client);
+  if (!paths) { paths = new WeakMap(); photoPaths.set(scope.client, paths); }
+  return paths;
+}
 
 // @nimi-authority: rule.odd-bureau.playground.photo
-export async function preparePlay(photo: Photo, kind: PlayRound['kind'], signal: AbortSignal, status: (text: string) => void, found: (props: Prop[]) => void): Promise<PlaySave> {
+export async function preparePlay(scope: NimiAppScope, photo: Photo, kind: PlayRound['kind'], signal: AbortSignal, status: (text: string) => void, found: (props: Prop[]) => void): Promise<PlaySave> {
+  signal = AbortSignal.any([scope.signal, signal]);
+  signal.throwIfAborted();
   status(t("正在认领照片里的物品…"));
-  const props = await locatePhoto(photo, signal, found);
+  const props = await locatePhoto(scope, photo, signal, found);
   status(kind === 'machine' ? t("给每件物品一条奇怪又讲理的规则…") : t("听听大家为什么不肯开工…"));
   const prompt = kind === 'machine' ? machinePrompt(props) : strikePrompt(props);
-  let draft = await textTurn(prompt, signal, kind === 'machine' ? 1800 : 2600);
+  let draft = await textTurn(scope, prompt, signal, kind === 'machine' ? 1800 : 2600);
   const parse = (): PlayRound => kind === 'machine'
     ? { kind, plan: parseMachine(jsonObject(draft), props), state: initialMachine() }
     : { kind, plan: parseStrike(jsonObject(draft), props), state: { promises: [], journal: [], performance: null, curtain: 0 } };
@@ -21,49 +30,52 @@ export async function preparePlay(photo: Photo, kind: PlayRound['kind'], signal:
   catch (error) {
     signal.throwIfAborted();
     status(t("让 AI 补齐刚才没说清的规则…"));
-    draft = await textTurn(`${prompt}\nThe last plan was incomplete: ${error instanceof Error ? error.message : 'Invalid format'}\nCorrect it and return complete JSON: ${draft}`, signal, 2800);
+    draft = await textTurn(scope, `${prompt}\nThe last plan was incomplete: ${error instanceof Error ? error.message : 'Invalid format'}\nCorrect it and return complete JSON: ${draft}`, signal, 2800);
     round = parse();
   }
   signal.throwIfAborted();
-  return { language, id: crypto.randomUUID(), photoPath: photoPaths.get(photo.blob) ?? '', photoName: photo.name, photoSource: photo.source, props, round };
+  return { language, id: crypto.randomUUID(), photoPath: pathsFor(scope).get(photo.blob) ?? '', photoName: photo.name, photoSource: photo.source, props, round };
 }
 
-export async function interpretProposal(plan: StrikePlan, props: Prop[], promises: PromiseAction[], message: string, signal: AbortSignal) {
-  const text = await textTurn(proposalPrompt(plan, props, promises, message), signal, 1000);
+export async function interpretProposal(scope: NimiAppScope, plan: StrikePlan, props: Prop[], promises: PromiseAction[], message: string, signal: AbortSignal) {
+  const text = await textTurn(scope, proposalPrompt(plan, props, promises, message), signal, 1000);
   const response = jsonObject(text);
   return { reply: shortText(response.reply, 350), actions: parseActions(response.actions, props) };
 }
 
 // @nimi-authority: rule.odd-bureau.playground.promises
-export async function writePerformance(plan: StrikePlan, props: Prop[], promises: PromiseAction[], signal: AbortSignal): Promise<string[]> {
+export async function writePerformance(scope: NimiAppScope, plan: StrikePlan, props: Prop[], promises: PromiseAction[], signal: AbortSignal): Promise<string[]> {
   const state = commitPromises(plan, [], promises);
   if (!strikeReady(state)) throw new Error(t("先落实休假、署名和三份工作，故事会才能开场。"));
-  const text = await textTurn(performancePrompt(props), signal, 1000);
+  const text = await textTurn(scope, performancePrompt(props), signal, 1000);
   return parsePerformance(jsonObject(text));
 }
 
 // @nimi-authority: rule.odd-bureau.playground.persistence
-export async function persistPlay(save: PlaySave, photo: Photo): Promise<PlaySave> {
-  let photoPath = save.photoPath || photoPaths.get(photo.blob);
+export async function persistPlay(scope: NimiAppScope, save: PlaySave, photo: Photo): Promise<PlaySave> {
+  scope.signal.throwIfAborted();
+  let photoPath = save.photoPath || pathsFor(scope).get(photo.blob);
   if (!photoPath) {
     photoPath = `play-scenes/${crypto.randomUUID()}.jpg`;
-    await getClient().storage.assets.write({ relativePath: photoPath, body: photo.blob, mediaType: 'image/jpeg' });
-    photoPaths.set(photo.blob, photoPath);
+    await scope.client.storage.assets.write({ relativePath: photoPath, body: photo.blob, mediaType: 'image/jpeg' });
+    scope.signal.throwIfAborted();
+    pathsFor(scope).set(photo.blob, photoPath);
   }
+  scope.signal.throwIfAborted();
   const next = { ...save, photoPath };
-  await getClient().storage.writeJson('current-play.json', JSON.parse(JSON.stringify(next)) as JsonValue);
+  await scope.client.storage.writeJson('current-play.json', JSON.parse(JSON.stringify(next)) as JsonValue);
+  scope.signal.throwIfAborted();
   return next;
 }
 
-export async function restorePlay(): Promise<{ save: PlaySave; photo: Photo } | null> {
-  const document = await getClient().storage.readJson('current-play.json');
+export async function restorePlay(scope: NimiAppScope): Promise<{ save: PlaySave; photo: Photo } | null> {
+  const document = await readSavedDocument(scope, 'current-play.json');
   if (document.value === null) return null;
   const save = parsePlaySave(document.value);
   if (save.language !== language) return null;
-  const asset = await getClient().storage.assets.read({ relativePath: save.photoPath });
-  const chunks: Uint8Array<ArrayBuffer>[] = [];
-  for await (const bytes of asset.body) chunks.push(new Uint8Array(bytes));
-  const photo = { ...await photoFromFile(new Blob(chunks, { type: 'image/jpeg' }), save.photoName), source: save.photoSource };
-  rememberInventory(photo, save.props); photoPaths.set(photo.blob, save.photoPath);
+  const blob = await readNimiAppAssetBlob(scope.client.storage.assets, save.photoPath, scope.signal);
+  const photo = { ...await photoFromFile(blob, save.photoName), source: save.photoSource };
+  if (scope.signal.aborted) { URL.revokeObjectURL(photo.url); scope.signal.throwIfAborted(); }
+  rememberInventory(photo, save.props); pathsFor(scope).set(photo.blob, save.photoPath);
   return { save, photo };
 }

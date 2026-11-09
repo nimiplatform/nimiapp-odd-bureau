@@ -1,9 +1,10 @@
+import { useBureauScope } from './use-bureau-scope.js';
 import { t, language } from './i18n.js';
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { Button, IconButton, TextField } from '@nimiplatform/kit/ui';
 import { ArrowLeft, ArrowRight, AudioLines, Check, CheckCheck, ChevronRight, CircleHelp, Fingerprint, ImagePlus, Lightbulb, MessageCircle, MousePointer2, Search, Send, Settings2, Sparkles, Square, Volume2, X } from 'lucide-react';
 import { MOODS, canAccuse, hitProp, type Character, type MoodId, type Prop, type Session } from './game.js';
-import { errorMessage, getClient, interrogate, openCase, photoFromFile, restoreSession, samplePhoto, savePhoto, saveSession, speak, type Photo, type Stage } from './nimi.js';
+import { errorMessage, interrogate, openCase, photoFromFile, restoreSession, samplePhoto, savePhoto, saveSession, speak, type Photo, type Stage } from './nimi.js';
 import { Setup, isConfigured } from './Setup.js';
 import './odd-bureau.css';
 
@@ -16,6 +17,7 @@ function PropPortrait({ prop, photo, className = '' }: { prop: Prop; photo: Phot
 }
 
 export function OddBureau({ onExit, active = true, onBusyChange }: { onExit?: () => void; active?: boolean; onBusyChange?: (busy: boolean) => void } = {}) {
+  const scope = useBureauScope();
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [mood, setMood] = useState<MoodId>('missing');
@@ -51,7 +53,7 @@ export function OddBureau({ onExit, active = true, onBusyChange }: { onExit?: ()
   useEffect(() => { onBusyChange?.(active && busy); return () => onBusyChange?.(false); }, [active, busy, onBusyChange]);
   useEffect(() => { if (!active) stopVoice(); }, [active]);
   async function checkConfiguration() {
-    try { setConfigured(isConfigured(await getClient().aiConfig.get())); }
+    try { setConfigured(isConfigured(await scope.client.aiConfig.get())); }
     catch { setConfigured(false); }
   }
 
@@ -62,7 +64,7 @@ export function OddBureau({ onExit, active = true, onBusyChange }: { onExit?: ()
   }
   function persist(next: Session) {
     if (!next.photoPath) return;
-    saveQueue.current = saveQueue.current.then(() => saveSession(next)).then(() => setStorageNote('')).catch(() => setStorageNote(t("本局暂未保存。请保持窗口打开，稍后可重试保存。")));
+    saveQueue.current = saveQueue.current.then(() => saveSession(scope, next)).then(() => setStorageNote('')).catch(() => setStorageNote(t("本局暂未保存。请保持窗口打开，稍后可重试保存。")));
   }
   function updateSession(next: Session) { sessionRef.current = next; setSession(next); persist(next); }
   function stopVoice() {
@@ -76,7 +78,7 @@ export function OddBureau({ onExit, active = true, onBusyChange }: { onExit?: ()
     void checkConfiguration();
     void (async () => {
       try {
-        const saved = await restoreSession();
+        const saved = await restoreSession(scope);
         if (!live) { if (saved) URL.revokeObjectURL(saved.photo.url); return; }
         if (saved) {
           replacePhoto(saved.photo); sessionRef.current = saved.session; setSession(saved.session); setMood(saved.session.mood);
@@ -112,10 +114,10 @@ export function OddBureau({ onExit, active = true, onBusyChange }: { onExit?: ()
     stopVoice(); setError(''); setStorageNote(''); setAccusing(false); setConfirmAccusation(null); setShowHint(false); setSelected(null); setPanel('witness'); setFoundProps([]);
     const controller = new AbortController(); operation.current = controller;
     try {
-      const created = await openCase(photo, mood, controller.signal, setStage, setFoundProps);
+      const created = await openCase(scope, photo, mood, controller.signal, setStage, setFoundProps);
       controller.signal.throwIfAborted();
       let saved = created;
-      try { saved = await savePhoto(created, photo); } catch { setStorageNote(t("照片暂未保存，本局仍可游玩。请保持窗口打开。")); }
+      try { saved = await savePhoto(scope, created, photo); } catch { setStorageNote(t("照片暂未保存，本局仍可游玩。请保持窗口打开。")); }
       controller.signal.throwIfAborted();
       updateSession(saved);
     } catch (err) { if (!controller.signal.aborted) setError(errorMessage(err)); }
@@ -142,7 +144,7 @@ export function OddBureau({ onExit, active = true, onBusyChange }: { onExit?: ()
     stopVoice(); setTalking(true); setError(''); setStreaming('');
     const controller = new AbortController(); operation.current = controller;
     try {
-      const answer = await interrogate(current, character, trimmed, controller.signal, setStreaming);
+      const answer = await interrogate(scope, current, character, trimmed, controller.signal, setStreaming);
       controller.signal.throwIfAborted();
       const latest = sessionRef.current!;
       updateSession({ ...latest, messages: { ...latest.messages, [character.objectId]: [...(latest.messages[character.objectId] ?? []).slice(-22), { who: 'player', text: trimmed }, { who: 'object', text: answer }] } });
@@ -154,7 +156,7 @@ export function OddBureau({ onExit, active = true, onBusyChange }: { onExit?: ()
     if (voiceState !== 'idle') { stopVoice(); return; }
     setError(''); setVoiceState('loading'); const controller = new AbortController(); voiceOperation.current = controller;
     try {
-      const url = await speak(text, controller.signal);
+      const url = await speak(scope, text, controller.signal);
       if (controller.signal.aborted) { URL.revokeObjectURL(url); return; }
       const player = new Audio(url); audio.current = player;
       player.onended = stopVoice; player.onerror = () => { stopVoice(); setError(t("声音没有播放成功，请再试一次。")); };

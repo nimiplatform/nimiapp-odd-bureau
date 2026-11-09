@@ -27,6 +27,14 @@ metadata:
 local_development:
   electron:
     renderer_origin: http://127.0.0.1:1485
+  web:
+    origin: https://127.0.0.1:4475
+    redirect_uri: https://127.0.0.1:4475/
+    client_id: nimi.odd-bureau.web.dev
+    realm_environment_id: dev
+    realm_url: http://127.0.0.1:3002
+    official_web_url: http://localhost:3000
+    command: pnpm run dev:web-renderer
 safety_profile:
   intended_audience: general
   content_descriptors: []

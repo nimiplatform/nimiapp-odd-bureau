@@ -20,7 +20,7 @@ import {
 } from '@nimiplatform/kit/features/generation/runtime';
 import {
   createNimiLocalAppRuntimeScenarioJobClient,
-  type NimiLocalAppClient,
+  type NimiLocalAppClient, type NimiAppRuntimeClient,
 } from '@nimiplatform/sdk/app';
 import type {
   StudioAudioSeparation,
@@ -68,12 +68,16 @@ export type StudioCapabilityNonSuccessFactory = (
   diagnostics?: StudioNonSuccessDiagnostics,
 ) => StudioNonSuccess;
 
+export type StudioRuntimeClient = Pick<NimiAppRuntimeClient, 'aiConfig' | 'storage'> & {
+  readonly ai: Pick<NimiLocalAppClient['ai'], 'text' | 'scenario' | 'scenarioJobs' | 'artifacts' | 'voiceAssets'>;
+};
+
 export type StudioRuntimeHost = {
   readonly appId: string;
   readonly surfaceId: string;
   readonly abortReason: string;
   readonly translate: (key: string, values?: Readonly<Record<string, unknown>>) => string;
-  readonly client: NimiLocalAppClient;
+  readonly client: StudioRuntimeClient;
   readonly createScenarioJobClient: typeof createNimiLocalAppRuntimeScenarioJobClient;
   readonly runners: StudioRuntimeRunnerSet;
   readonly nonSuccess: StudioCapabilityNonSuccessFactory;
@@ -101,7 +105,7 @@ export type StudioCapabilityRuntimeOrchestrator = {
   readonly handlers: StudioCapabilityRuntimeHandlers;
   readonly resolveCapability: (capabilityId: string) => StudioRuntimeCapabilityDescriptor;
   readonly inspectRuntime: () => Promise<StudioRuntimeInspection>;
-  readonly getClient: () => NimiLocalAppClient;
+  readonly getClient: () => StudioRuntimeClient;
   readonly createScenarioId: (capability: StudioRuntimeCapabilityDescriptor) => string;
   readonly createScenarioJobClient?: typeof createNimiLocalAppRuntimeScenarioJobClient;
   readonly runners?: Partial<StudioRuntimeRunnerSet>;
@@ -427,7 +431,7 @@ function withStudioKnownJob(result: StudioNonSuccess, error: unknown): StudioNon
 }
 
 function studioNonSuccessReasonFromRuntime(reason: string, diagnostics?: StudioNonSuccessDiagnostics): StudioNonSuccessReason {
-  if (diagnostics && ['SDK_LOCAL_APP_INPUT_INVALID', 'AI_INPUT_INVALID', 'AI_INPUT_LIMIT_EXCEEDED', 'AI_VOICE_INPUT_INVALID', 'AI_VOICE_TARGET_MODEL_MISMATCH', 'AI_VOICE_ASSET_NOT_FOUND', 'AI_VOICE_ASSET_EXPIRED'].includes(diagnostics.reasonCode)) {
+  if (diagnostics && ['SDK_LOCAL_APP_INPUT_INVALID', 'AI_INPUT_INVALID', 'AI_INPUT_LIMIT_EXCEEDED', 'AI_MEDIA_SPEC_INVALID', 'AI_VOICE_INPUT_INVALID', 'AI_VOICE_TARGET_MODEL_MISMATCH', 'AI_VOICE_ASSET_NOT_FOUND', 'AI_VOICE_ASSET_EXPIRED'].includes(diagnostics.reasonCode)) {
     return 'input-invalid';
   }
   return studioNonSuccessReason(reason);

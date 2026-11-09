@@ -1,6 +1,7 @@
 // @nimi-authority: rule.odd-bureau.playground.language
 import { t, language, supportsLanguage } from './i18n.js';
-import { getNimiLocalAppClient } from '../shell/auth/local-app-client.js';
+import type { NimiAppScope } from '@nimiplatform/kit/core/app-session';
+import { readNimiAppAssetBlob } from '@nimiplatform/kit/core/app-asset-media';
 import { createNimiLocalAppRuntimeScenarioJobClient } from '@nimiplatform/sdk/app';
 import { runNimiRuntimeScenarioJob } from '@nimiplatform/sdk/runtime';
 import { ExecutionMode, ScenarioType, VisionLocateGeometry } from '@nimiplatform/sdk/runtime/generated';
@@ -8,7 +9,6 @@ import { runRuntimeSpeechSynthesize } from '@nimiplatform/kit/features/generatio
 import { casePrompt, dialoguePrompt, overlap, parseMystery, parseSession, propsFromLocate, type Character, type MoodId, type Prop, type Session } from './game.js';
 import type { JsonValue } from '@nimiplatform/sdk/types';
 
-export const getClient = getNimiLocalAppClient;
 export type Photo = { url: string; blob: Blob; name: string; width: number; height: number; source: 'sample' | 'upload' };
 export type Stage = 'locating' | 'writing';
 const inventories = new WeakMap<Blob, Prop[]>();
@@ -32,9 +32,10 @@ export async function samplePhoto(): Promise<Photo> {
   return { ...await photoFromFile(await response.blob(), t("早餐之后")), source: 'sample' };
 }
 
-export async function textTurn(prompt: string, signal: AbortSignal, maxTokens: number, onDelta?: (text: string) => void): Promise<string> {
+export async function textTurn(scope: NimiAppScope, prompt: string, signal: AbortSignal, maxTokens: number, onDelta?: (text: string) => void): Promise<string> {
+  signal = AbortSignal.any([scope.signal, signal]);
   signal.throwIfAborted();
-  const stream = await getClient().ai.text.streamTurn({ messages: [{ role: 'user', text: prompt }], temperature: 0.8, maxTokens });
+  const stream = await scope.client.ai.text.streamTurn({ messages: [{ role: 'user', text: prompt }], temperature: 0.8, maxTokens });
   let text = ''; let complete = false;
   const cancel = () => { void stream.cancel().catch(() => undefined); };
   signal.addEventListener('abort', cancel, { once: true });
@@ -55,11 +56,14 @@ export async function textTurn(prompt: string, signal: AbortSignal, maxTokens: n
 }
 
 // @nimi-authority: rule.nimi.sdks.feature-clients.r102
-export async function locatePhoto(photo: Photo, signal: AbortSignal, onFound?: (props: Prop[]) => void): Promise<Prop[]> {
+export async function locatePhoto(scope: NimiAppScope, photo: Photo, signal: AbortSignal, onFound?: (props: Prop[]) => void): Promise<Prop[]> {
+  signal = AbortSignal.any([scope.signal, signal]);
   signal.throwIfAborted();
   let props = inventories.get(photo.blob);
   if (!props) {
-    const upload = await getClient().ai.artifacts.upload({ bytes: new Uint8Array(await photo.blob.arrayBuffer()), mimeType: 'image/jpeg' });
+    const bytes = new Uint8Array(await photo.blob.arrayBuffer());
+    signal.throwIfAborted();
+    const upload = await scope.client.ai.artifacts.upload({ bytes, mimeType: 'image/jpeg' });
     signal.throwIfAborted();
   // A locate label may echo the query. Query one object category at a time;
   // a match supplies its real geometry, while its identity comes from that exact query.
@@ -74,7 +78,7 @@ export async function locatePhoto(photo: Photo, signal: AbortSignal, onFound?: (
   for (const [query, label] of subjects) {
     signal.throwIfAborted();
     const located = await runNimiRuntimeScenarioJob({
-    ai: createNimiLocalAppRuntimeScenarioJobClient(getClient().ai),
+    ai: createNimiLocalAppRuntimeScenarioJobClient(scope.client.ai),
     request: {
       head: { appId: 'nimi.odd-bureau', subjectUserId: '', timeoutMs: 0 }, scenarioType: ScenarioType.VISION_LOCATE, executionMode: ExecutionMode.ASYNC_JOB,
       spec: { spec: { oneofKind: 'visionLocate', visionLocate: {
@@ -111,28 +115,31 @@ export async function locatePhoto(photo: Photo, signal: AbortSignal, onFound?: (
 
 export function rememberInventory(photo: Photo, props: Prop[]): void { inventories.set(photo.blob, props); }
 
-export async function openCase(photo: Photo, mood: MoodId, signal: AbortSignal, onStage: (stage: Stage) => void, onFound?: (props: Prop[]) => void): Promise<Session> {
+export async function openCase(scope: NimiAppScope, photo: Photo, mood: MoodId, signal: AbortSignal, onStage: (stage: Stage) => void, onFound?: (props: Prop[]) => void): Promise<Session> {
+  signal = AbortSignal.any([scope.signal, signal]);
+  signal.throwIfAborted();
   onStage('locating');
-  const props = await locatePhoto(photo, signal, onFound);
+  const props = await locatePhoto(scope, photo, signal, onFound);
   onStage('writing');
-  const mystery = parseMystery(await textTurn(casePrompt(props, mood), signal, 3500), props);
+  const mystery = parseMystery(await textTurn(scope, casePrompt(props, mood), signal, 3500), props);
   signal.throwIfAborted();
   return { language, id: crypto.randomUUID(), createdAt: new Date().toISOString(), photoPath: '', photoName: photo.name, photoSource: photo.source,
     props, mood, mystery, discovered: [], evidence: [], messages: {}, accusation: null };
 }
 
-export function interrogate(session: Session, character: Character, question: string, signal: AbortSignal, onDelta: (text: string) => void): Promise<string> {
-  return textTurn(dialoguePrompt(session, character, question), signal, 400, onDelta);
+export function interrogate(scope: NimiAppScope, session: Session, character: Character, question: string, signal: AbortSignal, onDelta: (text: string) => void): Promise<string> {
+  return textTurn(scope, dialoguePrompt(session, character, question), signal, 400, onDelta);
 }
 
-export async function speak(text: string, signal: AbortSignal): Promise<string> {
+export async function speak(scope: NimiAppScope, text: string, signal: AbortSignal): Promise<string> {
+  signal = AbortSignal.any([scope.signal, signal]);
   signal.throwIfAborted();
-  const catalog = await getClient().aiConfig.listOptions({ kind: 'preset-voices' });
+  const catalog = await scope.client.aiConfig.listOptions({ kind: 'preset-voices' });
   const voice = catalog.kind === 'preset-voices' ? catalog.options.find(option => supportsLanguage(option.supportedLangs)) : undefined;
   if (!voice) throw new Error(t("当前语音能力没有支持当前语言的声音。请在能力设置中选择支持此语言的语音模型。"));
   signal.throwIfAborted();
   const result = await runRuntimeSpeechSynthesize({
-    runtime: { ai: createNimiLocalAppRuntimeScenarioJobClient(getClient().ai) }, appId: 'nimi.odd-bureau',
+    runtime: { ai: createNimiLocalAppRuntimeScenarioJobClient(scope.client.ai) }, appId: 'nimi.odd-bureau',
     text, language, audioFormat: 'wav', voiceRef: { kind: 'preset_voice_id', presetVoiceId: voice.voiceId }, scenarioId: crypto.randomUUID(), surfaceId: 'odd-bureau-witness',
     signal, abortReason: 'player-stopped-voice',
   });
@@ -146,29 +153,32 @@ export async function speak(text: string, signal: AbortSignal): Promise<string> 
   }
   const artifact = result.output.firstArtifact;
   if (!artifact?.artifactId) throw new Error(t("没有收到角色的声音文件，请重试。"));
-  const audio = await getClient().ai.artifacts.read(artifact.artifactId);
+  const audio = await scope.client.ai.artifacts.read(artifact.artifactId);
   signal.throwIfAborted();
   return URL.createObjectURL(new Blob([new Uint8Array(audio.bytes)], { type: audio.mimeType }));
 }
 
 // App-owned game progress is stored through Nimi's admitted App storage, not browser storage.
-export async function savePhoto(session: Session, photo: Photo): Promise<Session> {
+export async function savePhoto(scope: NimiAppScope, session: Session, photo: Photo): Promise<Session> {
+  scope.signal.throwIfAborted();
   const photoPath = `cases/${session.id}.jpg`;
-  await getClient().storage.assets.write({ relativePath: photoPath, body: photo.blob, mediaType: 'image/jpeg' });
+  await scope.client.storage.assets.write({ relativePath: photoPath, body: photo.blob, mediaType: 'image/jpeg' });
+  scope.signal.throwIfAborted();
   return { ...session, photoPath };
 }
-export async function saveSession(session: Session): Promise<void> {
-  await getClient().storage.writeJson('current-case.json', JSON.parse(JSON.stringify(session)) as JsonValue);
+export async function saveSession(scope: NimiAppScope, session: Session): Promise<void> {
+  scope.signal.throwIfAborted();
+  await scope.client.storage.writeJson('current-case.json', JSON.parse(JSON.stringify(session)) as JsonValue);
+  scope.signal.throwIfAborted();
 }
-export async function restoreSession(): Promise<{ session: Session; photo: Photo } | null> {
-  const document = await getClient().storage.readJson('current-case.json');
+export async function restoreSession(scope: NimiAppScope): Promise<{ session: Session; photo: Photo } | null> {
+  const document = await readSavedDocument(scope, 'current-case.json');
   if (document.value === null) return null;
   const session = parseSession(document.value);
   if (session.language !== language) return null;
-  const asset = await getClient().storage.assets.read({ relativePath: session.photoPath });
-  const chunks: Uint8Array<ArrayBuffer>[] = [];
-  for await (const chunk of asset.body) chunks.push(new Uint8Array(chunk));
-  const photo = { ...await photoFromFile(new Blob(chunks, { type: 'image/jpeg' }), session.photoName), source: session.photoSource };
+  const blob = await readNimiAppAssetBlob(scope.client.storage.assets, session.photoPath, scope.signal);
+  const photo = { ...await photoFromFile(blob, session.photoName), source: session.photoSource };
+  if (scope.signal.aborted) { URL.revokeObjectURL(photo.url); scope.signal.throwIfAborted(); }
   inventories.set(photo.blob, session.props);
   return { session, photo };
 }
@@ -180,4 +190,19 @@ export function errorMessage(error: unknown): string {
   if (reason === 'ai-execution-interrupted') return t("Nimi 在本次操作中重新启动了。照片还在，你可以重新开案。");
   if (error instanceof Error) return error.message;
   return t("这次操作没有完成，请重试。");
+}
+
+/** Both carriers return their owning storage error; a missing save is an empty library. */
+export async function readSavedDocument(scope: NimiAppScope, path: string) {
+  scope.signal.throwIfAborted();
+  try {
+    const document = await scope.client.storage.readJson(path);
+    scope.signal.throwIfAborted();
+    return document;
+  } catch (error) {
+    scope.signal.throwIfAborted();
+    const reason = error && typeof error === 'object' && 'reasonCode' in error ? String(error.reasonCode) : '';
+    if (reason === 'not-found' || reason === 'APP_STORAGE_ENTRY_NOT_FOUND') return { value: null };
+    throw error;
+  }
 }

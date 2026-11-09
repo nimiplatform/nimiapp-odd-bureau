@@ -6,9 +6,11 @@ import {
   DEFAULT_DEV_RENDERER_ENTRY_IMPORT_RETRY_DELAYS_MS,
   createRendererEntryModuleLoader,
 } from '@nimiplatform/kit/shell/renderer/bootstrap';
+import { getTargetAppSession, endTargetAppSession } from './shell/workbench-target-adapter.js';
 import './styles.css';
 
 installNimiShellRuntimeBridge();
+const session = getTargetAppSession();
 
 const entryModuleLoader = createRendererEntryModuleLoader({
   retryDelaysMs: DEFAULT_DEV_RENDERER_ENTRY_IMPORT_RETRY_DELAYS_MS,
@@ -23,7 +25,8 @@ const rendererRoot = document.getElementById('root') as HTMLElement;
 /* Admitted workbench styles use this module scope, including body-portaled controls. */
 document.body.classList.add('nimi-ui-module--lab');
 rendererRoot.classList.add('nimi-workbench-host', 'nimi-ui-module--lab');
-createRoot(rendererRoot).render(
+const reactRoot = createRoot(rendererRoot);
+reactRoot.render(
   <React.StrictMode>
     <NimiThemeProvider accentPack="nimi-accent">
       <TooltipProvider>
@@ -34,3 +37,5 @@ createRoot(rendererRoot).render(
     </NimiThemeProvider>
   </React.StrictMode>,
 );
+void session.start();
+if (import.meta.hot) import.meta.hot.dispose(() => { endTargetAppSession(session); reactRoot.unmount(); });

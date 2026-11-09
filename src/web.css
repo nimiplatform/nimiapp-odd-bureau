@@ -1,0 +1,6 @@
+.odd-web-shell { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.odd-web-account { flex: none; display: flex; justify-content: flex-end; padding: 8px 16px; border-bottom: 1px solid var(--nimi-border-default); }
+.odd-web-account:empty { display: none; }
+.odd-web-shell > .contents { min-height: 0; }
+.odd-web-shell .app-shell { flex: 1; min-height: 0; }
+@media (max-width: 640px) { .odd-web-account > div { flex-wrap: wrap; justify-content: flex-end; } }

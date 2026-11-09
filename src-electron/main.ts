@@ -50,6 +50,7 @@ if (process.platform === 'win32') {
 const chromeHost = createNimiElectronAppChromeHost({
   metadata: { name: "奇物局", version: "0.1.1" },
   allowedRendererUrls, app,
+  appCommands: [{ id: 'app.nimi-account', menu: 'file', labels: { en: 'Nimi account', zh: 'Nimi 账号' } }],
   menu: { buildFromTemplate: template => Menu.buildFromTemplate(template as Electron.MenuItemConstructorOptions[]), setApplicationMenu: menu => Menu.setApplicationMenu(menu as Electron.Menu | null) },
 });
 registerNimiElectronAppAssetProtocolScheme(protocol);

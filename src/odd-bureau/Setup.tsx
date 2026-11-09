@@ -1,10 +1,11 @@
+import { useBureauScope } from './use-bureau-scope.js';
 import { t, language } from './i18n.js';
 import { useEffect, useState } from 'react';
 import { Button } from '@nimiplatform/kit/ui';
 import { ModelConfigAIConfigSurface } from '@nimiplatform/kit/features/model-config';
 import type { NimiAIConfigSnapshot } from '@nimiplatform/sdk/ai';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { getClient, errorMessage } from './nimi.js';
+import { errorMessage } from './nimi.js';
 
 const CONTRACTS = ['vision.locate', 'text.generate', 'audio.synthesize'];
 export function isConfigured(snapshot: NimiAIConfigSnapshot): boolean {
@@ -12,12 +13,13 @@ export function isConfigured(snapshot: NimiAIConfigSnapshot): boolean {
 }
 
 export function Setup({ onBack }: { onBack: () => void }) {
+  const scope = useBureauScope();
   const [snapshot, setSnapshot] = useState<NimiAIConfigSnapshot>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   async function refresh() {
     setLoading(true); setError('');
-    try { setSnapshot(await getClient().aiConfig.get()); } catch (err) { setError(errorMessage(err)); }
+    try { setSnapshot(await scope.client.aiConfig.get()); } catch (err) { setError(errorMessage(err)); }
     finally { setLoading(false); }
   }
   useEffect(() => { void refresh(); }, []);
@@ -28,8 +30,8 @@ export function Setup({ onBack }: { onBack: () => void }) {
       <ModelConfigAIConfigSurface context={{ owner: 'app-ai-config', appId: 'nimi.odd-bureau' }}
         capabilityContracts={CONTRACTS} capabilities={snapshot?.config?.capabilities ?? (snapshot ? null : undefined)}
         revision={snapshot?.revision} effectiveSelections={snapshot?.effectiveSelections} loading={loading} loadError={error || null}
-        listOptions={query => getClient().aiConfig.listOptions(query)} onRetry={() => void refresh()} language={language}
-        onOverwrite={async input => { const result = await getClient().aiConfig.overwrite(input); await refresh(); return result; }}
+        listOptions={query => scope.client.aiConfig.listOptions(query)} onRetry={() => void refresh()} language={language}
+        onOverwrite={async input => { const result = await scope.client.aiConfig.overwrite(input); await refresh(); return result; }}
         copy={{ title: t("奇物局的能力"), description: t("只为这间事务所选择能力，不会改变 Nimi 中其他 App 的设置。"),
           backLabel: t("返回能力总览"), activeModelLabel: t("使用的模型"), activeModelHint: t("选择本机或云端能力"),
           detailTitle: label => t("{0}设置", label), activeModelConfiguredLabel: t("已配置"), activeModelSetupPendingLabel: t("需要准备"),

@@ -61,7 +61,7 @@ function ReadyBody({ result }: { result: StudioCapabilityRunResult & { ok: true 
   }
   if (output.kind === 'speaker-embedding') return <SpeakerEmbeddingResultBody spaceId={output.spaceId} vector={output.vector} />;
   if (output.kind === 'embedding') {
-    return <EmbeddingResultBody spaceId={output.spaceId} />;
+    return <EmbeddingResultBody spaceId={output.spaceId} retrieval={output.retrieval} />;
   }
   if (output.kind === 'voice-asset') {
     return (
@@ -248,7 +248,8 @@ export function StudioResult({
     && result.reason !== 'runtime-timeout' ? result : null;
   const plainText = ready ? resultPlainText(ready, t) : '';
   const canExport = Boolean(ready && plainText);
-  const revealsManagedAsset = ready?.output.kind === 'artifacts' || ready?.output.kind === 'text-annotation';
+  const revealsManagedAsset = (ready?.output.kind === 'artifacts' || ready?.output.kind === 'text-annotation')
+    && rendererHost.app.projection.assetExportAction() === 'reveal';
   const displayIntentLabel = studioResultIntentLabel(result, capability, intentLabel, t);
   const [requestSettingsOpen, setRequestSettingsOpen] = useState(false);
   const hasRequestSettings = Boolean(requestSettings);

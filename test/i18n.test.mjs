@@ -41,6 +41,7 @@ await build({
   stdin: { contents: `
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { NimiAppSessionProvider } from '@nimiplatform/kit/auth/app';
 import { Playground } from './src/odd-bureau/Playground.tsx';
 import { AppNavigationProvider } from './src/shell/routes/app-navigation.tsx';
 import { OddBureau } from './src/odd-bureau/App.tsx';
@@ -57,8 +58,10 @@ const photo={name:t('早餐之后'),source:'sample',url:'test-only.jpg',width:10
 const machine={kind:'machine',plan:{title:'Fixture machine',invitation:'Fixture invitation',nodes:objects.map((p,i)=>({objectId:p.id,op:['source','echo','raise','store'][i],melody:i===0?[0,2]:[],line:'Fixture line'}))},state:initialMachine()};
 const strike={kind:'strike',plan:{title:'Fixture strike',situation:'Fixture situation',people:objects.map((p,i)=>({objectId:p.id,persona:'Fixture persona',offers:[{task:['reading','story','stage','stage'][i],needsCredit:i===1,needsRest:i===0?objects[2].id:null}]}))},state:{promises:[],journal:[],performance:null,curtain:0}};
 export function inspect() {
+ const snapshot={identity:{status:'signed-in',user:{displayName:'Fixture'},viewKey:'fixture',signal:new AbortController().signal},runtime:{status:'connected',scope:{client:{},signal:new AbortController().signal,viewKey:'fixture'}},busy:'none',issue:null,pendingRevocation:false};
+ const session={getSnapshot:()=>snapshot,subscribe:()=>()=>{}};
  const views={home:<AppNavigationProvider><Playground/></AppNavigationProvider>,mystery:<OddBureau/>,setup:<Setup onBack={()=>{}}/>,machine:<MachineGame photo={photo} objects={objects} round={machine} onChange={()=>{}}/>,strike:<StrikeGame photo={photo} objects={objects} round={strike} onChange={()=>{}} onRestart={()=>{}}/>,gate:<WorkbenchRuntimeGate appTitle="奇物局" copy={{checking:'Connecting to Nimi…'}} resolve={async()=>({status:'ready'})} clear={()=>{}} toErrorMessage={()=>''}><div/></WorkbenchRuntimeGate>};
- return {language,displayName,views:Object.fromEntries(Object.entries(views).map(([k,v])=>[k,renderToStaticMarkup(v)])),prompts:[casePrompt(objects,'missing'),machinePrompt(objects),strikePrompt(objects),proposalPrompt(strike.plan,objects,[],'Question'),performancePrompt(objects),dialoguePrompt({mystery:{incident:'Fixture incident'},messages:{}},{name:labels[0],persona:'Fixture persona',testimony:'Fixture testimony'},'Question')],ops:objects.map(p=>allowedOps(p.label)),carrier:localizeCarrierMessage('This App needs Nimi')};
+ return {language,displayName,views:Object.fromEntries(Object.entries(views).map(([k,v])=>[k,renderToStaticMarkup(<NimiAppSessionProvider session={session}>{v}</NimiAppSessionProvider>)])),prompts:[casePrompt(objects,'missing'),machinePrompt(objects),strikePrompt(objects),proposalPrompt(strike.plan,objects,[],'Question'),performancePrompt(objects),dialoguePrompt({mystery:{incident:'Fixture incident'},messages:{}},{name:labels[0],persona:'Fixture persona',testimony:'Fixture testimony'},'Question')],ops:objects.map(p=>allowedOps(p.label)),carrier:localizeCarrierMessage('This App needs Nimi')};
 }
 export {parsePerformance};
 `, resolveDir: root, loader: 'tsx' },

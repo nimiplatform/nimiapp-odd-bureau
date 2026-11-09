@@ -1,3 +1,4 @@
+import { useBureauScope } from './use-bureau-scope.js';
 import { t } from './i18n.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, TextareaField } from '@nimiplatform/kit/ui';
@@ -10,6 +11,7 @@ import { ObjectPortrait, PhotoStage } from './PhotoStage.js';
 
 // @nimi-authority: rule.odd-bureau.playground.promises
 export function StrikeGame({ photo, objects, round, onChange, onRestart, active = true }: { photo: Photo; objects: Prop[]; round: StrikeRound; onChange: (round: StrikeRound) => void; onRestart: () => void; active?: boolean }) {
+  const scope = useBureauScope();
   const [selected, setSelected] = useState(objects[0].id), [message, setMessage] = useState(''), [proposal, setProposal] = useState<{ reply: string; actions: PromiseAction[] } | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState(''), [voice, setVoice] = useState<'idle' | 'loading' | 'playing'>('idle');
   const request = useRef<AbortController | null>(null), voiceRequest = useRef<AbortController | null>(null), audio = useRef<HTMLAudioElement | null>(null);
   const proposalPanel = useRef<HTMLDivElement>(null);
@@ -35,14 +37,14 @@ export function StrikeGame({ photo, objects, round, onChange, onRestart, active 
   async function ask() {
     if (!message.trim() || busy) return;
     const controller = new AbortController(); request.current = controller; setBusy(true); setError(''); setProposal(null);
-    try { const next = await interpretProposal(plan, objects, state.promises, message.trim(), controller.signal); controller.signal.throwIfAborted(); setProposal(next); }
+    try { const next = await interpretProposal(scope, plan, objects, state.promises, message.trim(), controller.signal); controller.signal.throwIfAborted(); setProposal(next); }
     catch (e) { if (!controller.signal.aborted) setError(errorMessage(e)); }
     finally { if (request.current === controller) { request.current = null; setBusy(false); } }
   }
   async function perform() {
     if (!ready || busy) return;
     const controller = new AbortController(); request.current = controller; setBusy(true); setError('');
-    try { const parts = await writePerformance(plan, objects, state.promises, controller.signal); controller.signal.throwIfAborted(); onChange({ ...round, state: { ...state, performance: parts, curtain: 0 } }); }
+    try { const parts = await writePerformance(scope, plan, objects, state.promises, controller.signal); controller.signal.throwIfAborted(); onChange({ ...round, state: { ...state, performance: parts, curtain: 0 } }); }
     catch (e) { if (!controller.signal.aborted) setError(errorMessage(e)); }
     finally { if (request.current === controller) { request.current = null; setBusy(false); } }
   }
@@ -50,7 +52,7 @@ export function StrikeGame({ photo, objects, round, onChange, onRestart, active 
     if (!performance || state.curtain >= 3) return;
     if (voice !== 'idle') { stopVoice(); return; }
     const controller = new AbortController(); voiceRequest.current = controller; setVoice('loading'); setError('');
-    try { const url = await speak(performance[state.curtain], controller.signal); if (controller.signal.aborted) { URL.revokeObjectURL(url); return; } const player = new Audio(url); audio.current = player; player.onended = stopVoice; player.onerror = () => { setError(t("声音没能播放，请再试一次。")); stopVoice(); }; await player.play(); if (!controller.signal.aborted) setVoice('playing'); }
+    try { const url = await speak(scope, performance[state.curtain], controller.signal); if (controller.signal.aborted) { URL.revokeObjectURL(url); return; } const player = new Audio(url); audio.current = player; player.onended = stopVoice; player.onerror = () => { setError(t("声音没能播放，请再试一次。")); stopVoice(); }; await player.play(); if (!controller.signal.aborted) setVoice('playing'); }
     catch (e) { if (!controller.signal.aborted) { setError(errorMessage(e)); stopVoice(); } }
   }
   const badges = Object.fromEntries(objects.map(p => [p.id, current.rest === p.id ? t("获准休息") : [...TASKS.filter(t => current.tasks[t] === p.id).map(t => TASK_NAMES[t]), ...(current.credit === p.id ? [t("署名")] : [])].join(' · ') || (performance ? t("观众席") : t("等你来谈"))]));

@@ -2,8 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Button, Dialog, DialogContent, DialogTitle, IconButton, nimiToast, Tooltip } from '@nimiplatform/kit/ui';
 import { Copy as CopyIcon, Download as DownloadIcon, Maximize2, X } from 'lucide-react';
 import { useAIStudioHost, type AIStudioHostPort, type StudioTextExportResult } from './host-context.js';
-import type { StudioCapabilityRunResult } from './runtime-types.js';
-import { openNimiLocalAppAssetMediaUrl } from '@nimiplatform/kit/shell/renderer/bridge';
+import type { StudioCapabilityRunResult, StudioEmbeddingRetrieval } from './runtime-types.js';
 import { studioNonSuccessReasonTitle, type StudioTranslate } from './non-success-presentation.js';
 import {
   STUDIO_ARTIFACT_IMAGE_LOADING,
@@ -30,6 +29,7 @@ export function formatTypedOutput(
       spaceId: output.spaceId ?? null,
       sample: output.sample,
       totalTokens: output.totalTokens,
+      ...(output.retrieval ? { retrieval: output.retrieval } : {}),
     }, null, 2);
   }
   if (output.kind === 'text-annotation') {
@@ -111,7 +111,7 @@ export function KnownJobNotice({ jobId }: { readonly jobId?: string }) {
   return <p className="studio-result__hint">{t('StudioResults.job.known', { jobId })}</p>;
 }
 
-export function EmbeddingResultBody({ spaceId }: { readonly spaceId?: string }) {
+export function EmbeddingResultBody({ spaceId, retrieval }: { readonly spaceId?: string; readonly retrieval?: StudioEmbeddingRetrieval }) {
   const { translate: t } = useAIStudioHost();
   return (
     <div className="studio-result__rich">
@@ -119,6 +119,15 @@ export function EmbeddingResultBody({ spaceId }: { readonly spaceId?: string }) 
       <p className="studio-result__hint">
         {spaceId ? t('StudioResults.embedding.space', { spaceId }) : t('StudioResults.embedding.spaceNotRecorded')}
       </p>
+      {retrieval ? <section aria-label={t('Studio.embeddingRetrieval.title')}>
+        <h3>{t('Studio.embeddingRetrieval.title')}</h3>
+        <p>{retrieval.query}</p>
+        <ol>{retrieval.matches.map((match, index) => <li key={match.inputIndex}>
+          <strong>{t('Studio.embeddingRetrieval.match', { rank: index + 1, input: match.inputIndex + 1, score: match.score.toFixed(4) })}</strong>
+          <p>{match.excerpt}</p>
+        </li>)}</ol>
+        <p className="studio-result__hint">{t('Studio.embeddingRetrieval.hint')}</p>
+      </section> : null}
     </div>
   );
 }
@@ -221,37 +230,43 @@ export function ArtifactMediaPreview({
   const relativePath = artifact?.relativePath;
   const mimeType = artifact?.mediaType ?? '';
   const branch = studioArtifactRenderBranch(artifact);
-  const { translate: t } = useAIStudioHost();
+  const { translate: t, app: { commands: { openAssetMediaUrl } } } = useAIStudioHost();
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [url, setUrl] = useState<string | null>(null);
+  const [previewFailed, setPreviewFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     setImagePreviewOpen(false);
     setUrl(null);
+    setPreviewFailed(false);
     if (!relativePath || !hasPreviewableArtifact(artifact)) return undefined;
+    const controller = new AbortController();
     let active = true;
     let revoke: (() => Promise<void>) | null = null;
-    void openNimiLocalAppAssetMediaUrl(relativePath)
+    void openAssetMediaUrl(relativePath, controller.signal)
       .then((handle) => {
         revoke = handle.revoke;
         if (active) setUrl(handle.url);
         else void handle.revoke();
       })
       .catch(() => {
-        if (active) setUrl(null);
+        if (active) setPreviewFailed(true);
       });
     return () => {
       active = false;
+      controller.abort();
       setUrl(null);
       if (revoke) void revoke();
     };
-  }, [artifact, mimeType, relativePath]);
+  }, [artifact, mimeType, relativePath, openAssetMediaUrl, attempt]);
   useEffect(() => {
     setImagePreviewUrl(null);
     if (!imagePreviewOpen || !relativePath) return undefined;
+    const controller = new AbortController();
     let active = true;
     let revoke: (() => Promise<void>) | undefined;
-    void openNimiLocalAppAssetMediaUrl(relativePath)
+    void openAssetMediaUrl(relativePath, controller.signal)
       .then((handle) => {
         revoke = handle.revoke;
         if (active) setImagePreviewUrl(handle.url);
@@ -263,10 +278,14 @@ export function ArtifactMediaPreview({
         nimiToast.danger(t('StudioShell.imagePreviewFailed'));
       });
     return () => {
-      active = false;
+      active = false; controller.abort();
       if (revoke) void revoke();
     };
-  }, [imagePreviewOpen, relativePath, t]);
+  }, [imagePreviewOpen, relativePath, t, openAssetMediaUrl]);
+  if (previewFailed) return <div role="alert">
+    <p>{t('StudioShell.mediaPreviewFailed')}</p>
+    <Button size="sm" tone="secondary" onClick={() => setAttempt(value => value + 1)}>{t('Common.retry')}</Button>
+  </div>;
   if (!hasPreviewableArtifact(artifact) || !url) return null;
   const label = mediaLabel || artifact?.displayName || relativePath || fallbackLabel;
   const isImage = branch === 'image';
@@ -409,6 +428,8 @@ export async function downloadTextFile(
   }
   if (!result.ok) {
     nimiToast.danger(host.translate('Common.exportFailed'));
+  } else if (result.value.destination === 'browser-download') {
+    nimiToast.success(host.translate('Common.downloadRequested'));
   } else if (!result.value.revealed) {
     nimiToast.warning(host.translate('Common.exportSavedRevealFailed', { path: result.value.artifactPath }), { durationMs: 12000 });
   } else {
@@ -417,13 +438,14 @@ export async function downloadTextFile(
   return result;
 }
 
-export async function revealStudioAsset(host: Pick<AIStudioHostPort, 'sdk' | 'translate'>, relativePath: string): Promise<boolean> {
+export async function exportStudioAsset(host: Pick<AIStudioHostPort, 'app' | 'translate'>, relativePath: string): Promise<boolean> {
+  const downloading = host.app.projection.assetExportAction() === 'download';
   try {
-    await host.sdk.revealLocalAppAsset(relativePath);
-    nimiToast.success(host.translate('Common.assetRevealed'));
+    await host.app.commands.exportAsset(relativePath);
+    nimiToast.success(host.translate(downloading ? 'Common.downloadRequested' : 'Common.assetRevealed'));
     return true;
   } catch {
-    nimiToast.danger(host.translate('Common.assetRevealFailed', { path: relativePath }));
+    nimiToast.danger(host.translate(downloading ? 'Common.exportFailed' : 'Common.assetRevealFailed', { path: relativePath }));
     return false;
   }
 }

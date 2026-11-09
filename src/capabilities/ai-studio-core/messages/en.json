@@ -9,6 +9,7 @@
     "exportSaved": "File saved: {{path}}",
     "exportSavedRevealFailed": "The file was saved to {{path}}, but its folder could not be shown. Open it from this path. Exporting again creates another file.",
     "assetRevealed": "File shown in folder.",
+    "downloadRequested": "Download requested. Check your browser's downloads.",
     "assetRevealFailed": "The folder could not be shown for {{path}}. The file has not been changed; try again when the host is available."
   },
   "History": {
@@ -142,6 +143,7 @@
       "inputLimitExceeded": "The configured model cannot take this whole input. Nothing was shortened or answered in part.",
       "textBehaviorUnsupported": "The selected model cannot run this request as set: its tools, structured output, reasoning or generation settings are not supported. No partial answer was accepted.",
       "mediaOptionUnsupported": "The selected model cannot use one or more media settings in this request.",
+      "embeddingPurposeUnsupported": "The selected model does not support the current retrieval purpose setting.",
       "modalityUnsupported": "The selected configuration does not support one or more inputs or options in this request.",
       "providerRateLimited": "The cloud service refused this request because a rate or usage limit was reached. For a ChatGPT plan connection, this is the plan's usage limit for this app.",
       "mediaCodecUnavailable": "The audio and video tools required by this request were unavailable when it ran.",
@@ -158,7 +160,13 @@
       "configInvalid": "This capability's saved AI configuration can't run on the current Runtime, for example because its cloud service is no longer supported.",
       "modelNotFound": "The selected model is not available: its cloud account does not offer it, or no admitted implementation exists for it. Nothing was generated.",
       "fallback": "The generation did not complete.",
-      "stoppedDirectCall": "You stopped waiting for this call. A result that arrives later will not be shown."
+      "stoppedDirectCall": "You stopped waiting for this call. A result that arrives later will not be shown.",
+      "providerAuthFailed": "The cloud service rejected this connection's credentials. Its API key may be expired, revoked, or invalid.",
+      "mediaStorageMissing": "This video request needs storage for its uploaded audio or video references.",
+      "mediaStorageCredentials": "OSS rejected the reference-media storage credentials.",
+      "mediaStorageVersioning": "Reference-media storage requires a bucket with versioning never enabled.",
+      "mediaStorageUnavailable": "The reference-media storage request could not complete.",
+      "mediaStorageCleanup": "The task could not confirm ownership or deletion of an uploaded reference object."
     },
     "action": {
       "runtimeUnavailable": "Return to Desktop, confirm Local AI is connected, then try again.",
@@ -173,12 +181,13 @@
       "runtimeCallFailed": "Try again once. If it still fails, open Runtime details to find the cause.",
       "contentFilterBlocked": "Try removing or redacting any restricted content, or adjusting the selected context, then submit your request again.",
       "inputLimitExceeded": "Shorten the input, or configure a model that accepts longer input, then run it again.",
-      "textBehaviorUnsupported": "Open Parameters and reset the settings this model does not accept, or choose a model that supports this behavior in Desktop AI Capabilities, then run again.",
+      "textBehaviorUnsupported": "Open Parameters and reset the settings this model does not accept, or choose a model that supports this behavior in this App's AI configuration, then run again.",
       "mediaOptionUnsupported": "Open Parameters and reset the unsupported settings, then run again. You can also choose a model that supports those settings in App AI configuration.",
+      "embeddingPurposeUnsupported": "Open Parameters and choose \"Content to search\" when indexing documents or \"Search query\" when searching them, then run again. If that purpose is still unsupported, choose a model that supports it in App AI configuration.",
       "modalityUnsupported": "Change the request inputs or reset the unsupported options in Parameters before running again. You can also choose a configuration that supports the request.",
       "providerRateLimited": "Wait and try again later. For a ChatGPT plan connection, review usage at {{usageUrl}}. You can also open App AI configuration and choose another model.",
       "mediaCodecUnavailable": "In Nimi Desktop, open AI Capabilities → Advanced & Diagnostics → Audio and video tools. Install or repair it if needed, wait until the components are installed, then run this request again.",
-      "localLoadFailed": "Check that the inputs and parameters match the selected model. In Desktop AI Capabilities, confirm that its model and components are prepared, or repair the setup before running again. Runtime details show the reported failure.",
+      "localLoadFailed": "Check that the inputs and parameters match the selected model. To inspect shared models and components, open AI Capabilities in Nimi Home on the host PC, then run again once the setup is ready. Runtime details show the reported failure.",
       "localConfigurationMissing": "In Nimi Home, open AI Capabilities and finish setting up the local model for this capability. Once it is available, return here and submit your current input again. Runtime details retain the reported failure.",
       "voiceInputRequired": "Open Parameters and choose a supported preset or compatible local voice asset. If this model needs an asset and none is listed, create one under Voice Creation, then return here.",
       "voiceTargetMismatch": "Choose a voice asset compatible with the current speech model, or create one under Voice Creation before retrying.",
@@ -191,7 +200,13 @@
       "configInvalid": "Open App AI configuration, choose a model for this capability again, then run it again.",
       "modelNotFound": "Open App AI configuration, choose an available model for this capability, then run it again.",
       "fallback": "Try again. If it still fails, open Runtime details to find the cause.",
-      "stoppedDirectCall": "Run it again whenever you are ready."
+      "stoppedDirectCall": "Run it again whenever you are ready.",
+      "providerAuthFailed": "Update this connection's API key or sign in again in Nimi Cloud Services, then submit a new request.",
+      "mediaStorageMissing": "In Nimi Cloud Services, open this connection and configure Reference media storage. Then submit a new request.",
+      "mediaStorageCredentials": "Update the OSS credentials in this connection’s Reference media storage settings and verify its bucket permissions.",
+      "mediaStorageVersioning": "Configure an unversioned OSS bucket for this connection’s reference media.",
+      "mediaStorageUnavailable": "Check the OSS region, bucket and permissions in Nimi Cloud Services before submitting again.",
+      "mediaStorageCleanup": "Inspect this task’s cleanup result in Nimi diagnostics and the configured OSS bucket. Re-running generation does not prove cleanup."
     },
     "hint": {
       "runtimeUnavailable": "Restore the protected Runtime connection, then retry the same request.",
@@ -219,6 +234,7 @@
     "expandGeneratedImage": "Expand generated image",
     "imagePreview": "Image preview",
     "imagePreviewFailed": "The image preview could not be opened. Please try again.",
+    "mediaPreviewFailed": "The saved media could not be loaded. Retry loading the existing result.",
     "closeImagePreview": "Close image preview",
     "emptyBody": "(empty body)",
     "emptyTranscript": "(empty transcript)",
@@ -432,7 +448,8 @@
       "toolResult": "Tool result {{name}} · {{id}}",
       "toolError": "Tool error {{name}} · {{id}}",
       "structured": "Parsed structured result",
-      "finalText": "Final text"
+      "finalText": "Final text",
+      "jsonObjectScenario": "JSON object test: the App parsed the final text and verified it is an object."
     },
     "decision": {
       "title": "Decisions",
@@ -458,7 +475,12 @@
       "nothingObserved": "No results were observed.",
       "notRestorable": "A closed Session cannot be restored. Open a new Session to run it again.",
       "stateClosed": "Closed",
-      "stateTerminated": "Terminated"
+      "stateTerminated": "Terminated",
+      "audioUsageFinal": "Final reported cumulative audio: {{seconds}} s. This is not a token count or price estimate.",
+      "audioUsagePartial": "Reported cumulative audio so far: {{seconds}} s; finalization is unconfirmed.",
+      "localClosureUnconfirmed": "The session ended; local resource release is unconfirmed.",
+      "providerClosureConfirmed": "Local resources released and provider session closure confirmed.",
+      "localClosureConfirmed": "Local connection and resources released. No provider session-close receipt; final usage is unconfirmed."
     },
     "faceSwap": {
       "inputs": "Face replacement inputs",

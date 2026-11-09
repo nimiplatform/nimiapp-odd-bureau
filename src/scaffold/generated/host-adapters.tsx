@@ -3,30 +3,26 @@ import { useNimiNavigationSnapshot } from '@nimiplatform/kit/ui/app-chrome';
 import type { NimiAIConfigSnapshot } from '@nimiplatform/sdk/ai';
 import { createNimiClientId } from '@nimiplatform/sdk/types';
 import { ModelConfigAIConfigSurface } from '@nimiplatform/kit/features/model-config';
-import { openDesktopIntent } from '@nimiplatform/kit/shell/renderer/bridge';
+import { openDesktopIntent, openNimiLocalAppAssetMediaUrl } from '@nimiplatform/kit/shell/renderer/bridge';
 import { StatusBadge } from '@nimiplatform/kit/ui';
 import {
   AIStudioHostProvider,
   AIStudioWorkspace,
   DEFAULT_AI_STUDIO_HISTORY_PANEL_PREFERENCES,
-  appendStudioRunHistoryRecord,
   cleanupStudioHistoryArtifacts,
   clearStudioHistoryWithPolicy,
   createStudioNonSuccess,
   createStudioRunTargetSummary,
-  createEmptyStudioPromptDraftStore,
+  createStudioPromptDraftRepository,
   loadStudioAIConfig,
   parseAIStudioHistoryPanelPreferences,
-  parseStudioRunHistory,
-  parseStudioPromptDraftStore,
+  parseStudioRunHistoryRecord,
+  studioHistoryFromRecords,
   projectStudioManagedHistory,
-  readStudioPromptDraft,
   requireStudioAIConfigOwner,
   removeStudioHistoryWithPolicy,
   runStudioCapability,
   subscribeStudioAIConfigRefresh,
-  studioHistoryArtifactPaths,
-  updateStudioPromptDraftStore,
   useAIStudioWorkspaceController,
   type AIStudioHistoryMutationOutcome,
   type AIStudioHistoryPanelPreferences,
@@ -34,11 +30,11 @@ import {
   type AIStudioHistoryRepository,
   type AIStudioHostPort,
   type AIStudioWorkspaceController,
-  type StudioPromptDraftStore,
   type StudioRunHistory,
   type StudioRunHistoryRecord,
   type StudioRuntimeInspection,
 } from '../../capabilities/ai-studio-core/index.js';
+import { createNimiAppRecordStore } from '@nimiplatform/kit/core/app-record-storage';
 import { appId, appTitle } from '../../shell/auth/app-identity.js';
 import { getNimiLocalAppClient } from '../../shell/auth/local-app-client.js';
 import { getRuntimePlatformProjection } from '../../shell/auth/runtime-platform.js';
@@ -49,10 +45,10 @@ import {
 import { generatedStudioRuntimeHandlers } from './runtime-registry.js';
 import { generatedLocale, translateGeneratedMessage } from './i18n.js';
 
-const HISTORY_PATH = 'ai-studio/run-history.v1.json';
-const PROMPT_DRAFT_STORAGE_KEY = 'nimi.ai-studio.prompt-drafts.v1';
 const translate: AIStudioHostPort['translate'] = translateGeneratedMessage;
 
+function createGeneratedServices(client: ReturnType<typeof getNimiLocalAppClient>) {
+const storageScope = '';
 async function inspectTargetRuntime(): Promise<StudioRuntimeInspection> {
   const projection = await getRuntimePlatformProjection();
   if (projection.status === 'ready') {
@@ -78,20 +74,9 @@ function isStorageEntryNotFound(error: unknown): boolean {
     || normalized.endsWith('_LOCAL_ASSET_NOT_FOUND');
 }
 
+const historyRecords = createNimiAppRecordStore(client.storage.assets, 'ai-studio/history', parseStudioRunHistoryRecord);
 async function loadRunHistory(): Promise<StudioRunHistory> {
-  try {
-    const document = await getNimiLocalAppClient().storage.readJson(HISTORY_PATH);
-    return parseStudioRunHistory(document.value);
-  } catch (error) {
-    if (isStorageEntryNotFound(error)) return {};
-    throw error;
-  }
-}
-
-async function writeRunHistory(history: StudioRunHistory): Promise<StudioRunHistory> {
-  const normalized = parseStudioRunHistory(JSON.parse(JSON.stringify(history)) as unknown);
-  await getNimiLocalAppClient().storage.writeJson(HISTORY_PATH, normalized as never);
-  return normalized;
+  return studioHistoryFromRecords((await historyRecords.list()).sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
 }
 
 let historyMutationTail: Promise<unknown> = Promise.resolve();
@@ -103,7 +88,7 @@ function mutateHistory<TValue>(operation: () => Promise<TValue>): Promise<TValue
 
 const cleanupArtifacts: AIStudioHistoryRepository['cleanupArtifacts'] = (relativePaths) => cleanupStudioHistoryArtifacts({
   relativePaths,
-  removeArtifact: (relativePath) => getNimiLocalAppClient().storage.assets.remove(relativePath),
+  removeArtifact: (relativePath) => client.storage.assets.remove(relativePath),
   isNotFound: isStorageEntryNotFound,
 });
 
@@ -113,7 +98,7 @@ async function verifyHistoryProjection(runHistory: StudioRunHistory): Promise<AI
     resolveCapabilityLabel: (capabilityId) => generatedAIStudioRegistrations.find((entry) => (
       entry.descriptor.id === capabilityId
     ))?.descriptor.label ?? capabilityId,
-    statArtifact: (artifact) => getNimiLocalAppClient().storage.assets.stat(artifact.relativePath),
+    statArtifact: (artifact) => client.storage.assets.stat(artifact.relativePath),
   });
 }
 
@@ -123,9 +108,8 @@ async function loadVerifiedHistory(): Promise<AIStudioHistoryProjection> {
 
 async function appendRecord(record: StudioRunHistoryRecord): Promise<AIStudioHistoryProjection> {
   return mutateHistory(async () => {
-    const current = await loadRunHistory();
-    const next = appendStudioRunHistoryRecord(current, record);
-    return verifyHistoryProjection(await writeRunHistory(next));
+    await historyRecords.write(record);
+    return verifyHistoryProjection(await loadRunHistory());
   });
 }
 
@@ -133,22 +117,9 @@ async function persistHistory({ result, record }: { readonly result: Parameters<
   try {
     return { ok: true as const, projection: await appendRecord(record) };
   } catch (error) {
-    const paths = studioHistoryArtifactPaths(record);
-    if (result.ok && result.output.kind === 'artifacts' && (result.output.musicGeneration || result.output.musicTranscription || result.output.voiceConversion)) {
-      // Music recovery already owns these assets; history is an additional index.
-      return { ok: false as const, message: error instanceof Error ? error.message : String(error), retryRecord: true, remainingCleanupPaths: [] };
-    }
-    const cleanup = await cleanupArtifacts(paths);
     const message = error instanceof Error ? error.message : String(error || 'History persistence failed.');
-    return {
-      ok: false as const,
-      message,
-      retryRecord: paths.length === 0,
-      remainingCleanupPaths: cleanup.remainingCleanupPaths,
-      ...(paths.length > 0 ? {
-        displayFailure: { reason: 'runtime-call-failed' as const, message: `Runtime completed, but managed artifact history persistence failed: ${message}` },
-      } : {}),
-    };
+    // A lost publish response must not delete assets of a committed record.
+    return { ok: false as const, message, retryRecord: true, remainingCleanupPaths: [] };
   }
 }
 
@@ -159,9 +130,12 @@ async function removeHistoryRecord(recordId: string, deleteAssets: boolean): Pro
       history: current,
       recordId,
       deleteAssets,
-      removeArtifact: (relativePath) => getNimiLocalAppClient().storage.assets.remove(relativePath),
+      removeArtifact: (relativePath) => client.storage.assets.remove(relativePath),
       isNotFound: isStorageEntryNotFound,
-      commit: async (next) => { await writeRunHistory(next); },
+      commit: async (next) => {
+        const retained = new Set(Object.values(next).flat().map(record => record.id));
+        for (const record of Object.values(current).flat()) if (!retained.has(record.id)) await historyRecords.remove(record.id);
+      },
       project: verifyHistoryProjection,
     });
   });
@@ -174,9 +148,12 @@ async function clearHistory(capabilityId: string | null, deleteAssets: boolean):
       history: current,
       capabilityId,
       deleteAssets,
-      removeArtifact: (relativePath) => getNimiLocalAppClient().storage.assets.remove(relativePath),
+      removeArtifact: (relativePath) => client.storage.assets.remove(relativePath),
       isNotFound: isStorageEntryNotFound,
-      commit: async (next) => { await writeRunHistory(next); },
+      commit: async (next) => {
+        const retained = new Set(Object.values(next).flat().map(record => record.id));
+        for (const record of Object.values(current).flat()) if (!retained.has(record.id)) await historyRecords.remove(record.id);
+      },
       project: verifyHistoryProjection,
     });
   });
@@ -185,13 +162,13 @@ async function clearHistory(capabilityId: string | null, deleteAssets: boolean):
 const HISTORY_PANEL_STORAGE_KEY = 'nimi.ai-studio.history-panel.v1';
 function loadPanelPreferences(): AIStudioHistoryPanelPreferences {
   try {
-    const raw = globalThis.localStorage?.getItem(HISTORY_PANEL_STORAGE_KEY);
+    const raw = globalThis.localStorage?.getItem(HISTORY_PANEL_STORAGE_KEY + storageScope);
     if (!raw) return DEFAULT_AI_STUDIO_HISTORY_PANEL_PREFERENCES;
     return parseAIStudioHistoryPanelPreferences(JSON.parse(raw));
   } catch { return DEFAULT_AI_STUDIO_HISTORY_PANEL_PREFERENCES; }
 }
 function savePanelPreferences(preferences: AIStudioHistoryPanelPreferences): void {
-  try { globalThis.localStorage?.setItem(HISTORY_PANEL_STORAGE_KEY, JSON.stringify(preferences)); } catch { /* UI state remains session-local. */ }
+  try { globalThis.localStorage?.setItem(HISTORY_PANEL_STORAGE_KEY + storageScope, JSON.stringify(preferences)); } catch { /* UI state remains session-local. */ }
 }
 
 const historyRepository: AIStudioHistoryRepository = Object.freeze({
@@ -206,34 +183,16 @@ const historyRepository: AIStudioHistoryRepository = Object.freeze({
   savePanelPreferences,
 });
 
-let promptDraftStore = readPromptDraftStore();
-
-function readPromptDraftStore(): StudioPromptDraftStore {
-  try {
-    const raw = globalThis.localStorage?.getItem(PROMPT_DRAFT_STORAGE_KEY);
-    if (!raw) return createEmptyStudioPromptDraftStore();
-    return parseStudioPromptDraftStore(JSON.parse(raw));
-  } catch {
-    return createEmptyStudioPromptDraftStore();
-  }
-}
-
-async function savePromptDraft(key: Parameters<AIStudioHostPort['app']['commands']['savePromptDraft']>[0], prompt: string, enabled: boolean) {
-  const next = updateStudioPromptDraftStore(promptDraftStore, key, prompt, enabled);
-  if (next === promptDraftStore) return promptDraftStore;
-  promptDraftStore = next;
-  try { globalThis.localStorage?.setItem(PROMPT_DRAFT_STORAGE_KEY, JSON.stringify(promptDraftStore)); } catch { /* UI state remains session-local. */ }
-  return promptDraftStore;
-}
+const promptDrafts = createStudioPromptDraftRepository(client.storage);
 
 const exportText: AIStudioHostPort['app']['commands']['exportText'] = async ({ filename, body }) => {
   try {
-    const assets = getNimiLocalAppClient().storage.assets;
+    const assets = client.storage.assets;
     const saved = await assets.write({ relativePath: `exports/${crypto.randomUUID()}/${filename}`,
       body: new Blob([body], { type: 'text/plain' }), mediaType: 'text/plain', overwrite: false });
     let revealed = false;
     try { await assets.reveal(saved.relativePath); revealed = true; } catch { /* The file remains saved. */ }
-    return { ok: true, value: { filename, artifactPath: saved.relativePath, byteSize: saved.sizeBytes, revealed } };
+    return { ok: true, value: { destination: 'runtime-asset', filename, artifactPath: saved.relativePath, byteSize: saved.sizeBytes, revealed } };
   } catch (error) { return { ok: false, error }; }
 };
 
@@ -256,7 +215,8 @@ const hostValue: AIStudioHostPort = {
   clock: { now: () => Date.now() },
   app: {
     projection: {
-      promptDraft: (key, enabled) => ({ prompt: readStudioPromptDraft(promptDraftStore, key, enabled) }),
+      promptDraft: promptDrafts.load,
+      assetExportAction: () => 'reveal',
       projectRunTarget: createStudioRunTargetSummary,
       runStatusLabel,
     },
@@ -264,7 +224,7 @@ const hostValue: AIStudioHostPort = {
       subscribeAIConfigRefresh: (listener) => subscribeStudioAIConfigRefresh(listener, window, document),
     },
     commands: {
-      savePromptDraft,
+      savePromptDraft: promptDrafts.save,
       async copyText(text) {
         try {
           await navigator.clipboard.writeText(text);
@@ -274,6 +234,8 @@ const hostValue: AIStudioHostPort = {
         }
       },
       exportText,
+      exportAsset: async (relativePath) => { await client.storage.assets.reveal(relativePath); },
+      openAssetMediaUrl: openNimiLocalAppAssetMediaUrl,
     },
   },
   sdk: {
@@ -285,33 +247,35 @@ const hostValue: AIStudioHostPort = {
       handlers: generatedStudioRuntimeHandlers,
       resolveCapability: (capabilityId) => generatedAIStudioComposition.getCapability(capabilityId).descriptor,
       inspectRuntime: inspectTargetRuntime,
-      getClient: getNimiLocalAppClient,
+      getClient: () => client,
       createScenarioId: (capability) => `studio:${capability.id}`,
       nonSuccess: (capability, reason, message, diagnostics) => (
         createStudioNonSuccess(capability, reason, message, translate, diagnostics)
       ),
     }),
-    deleteLocalAppVoiceAsset: (voiceAssetId) => getNimiLocalAppClient().ai.voiceAssets.delete(voiceAssetId),
+    deleteLocalAppVoiceAsset: (voiceAssetId) => client.ai.voiceAssets.delete(voiceAssetId),
     async listLocalAppVoiceAssets() {
-      const result = await getNimiLocalAppClient().ai.voiceAssets.list({ pageSize: 100, pageToken: '' });
+      const result = await client.ai.voiceAssets.list({ pageSize: 100, pageToken: '' });
       return result.assets.map((asset) => ({
         voiceAssetId: asset.voiceAssetId,
         creationSource: asset.creationSource,
         status: asset.status,
       }));
     },
-    uploadLocalAppArtifact: (input) => getNimiLocalAppClient().ai.artifacts.upload(input),
-    assets: getNimiLocalAppClient().storage.assets,
-    storage: getNimiLocalAppClient().storage,
+    uploadLocalAppArtifact: (input) => client.ai.artifacts.upload(input),
+    assets: client.storage.assets,
+    storage: client.storage,
     aiConfig: {
-      getSnapshot: () => getNimiLocalAppClient().aiConfig.get(),
+      getSnapshot: () => client.aiConfig.get(),
       get: () => loadStudioAIConfig({
-        get: async () => (await getNimiLocalAppClient().aiConfig.get()).config,
+        get: async () => (await client.aiConfig.get()).config,
       }, appId),
     },
-    revealLocalAppAsset: (relativePath) => getNimiLocalAppClient().storage.assets.reveal(relativePath),
   },
 };
+
+return { hostValue, historyRepository, inspectTargetRuntime };
+}
 
 const generatedCapabilityContracts = Object.freeze([
   ...new Set(generatedAIStudioRegistrations.flatMap((registration) => (
@@ -329,6 +293,7 @@ function GeneratedAIConfigPanel({
   // Absent when the App-owned ai-studio-core predates commit reporting.
   readonly onCommitted?: () => void;
 }) {
+  const [client] = useState(getNimiLocalAppClient);
   const [snapshot, setSnapshot] = useState<NimiAIConfigSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -336,7 +301,7 @@ function GeneratedAIConfigPanel({
     setLoading(true);
     setLoadError(null);
     try {
-      const next = await getNimiLocalAppClient().aiConfig.get();
+      const next = await client.aiConfig.get();
       if (next.config) requireStudioAIConfigOwner(next.config, appId);
       setSnapshot(next);
     } catch (error) {
@@ -362,12 +327,12 @@ function GeneratedAIConfigPanel({
           capabilities={snapshot?.config ? snapshot.config.capabilities as never : snapshot ? null : undefined}
           revision={snapshot?.revision}
           effectiveSelections={snapshot?.effectiveSelections}
-          listOptions={(query) => getNimiLocalAppClient().aiConfig.listOptions(query)}
+          listOptions={(query) => client.aiConfig.listOptions(query)}
           loading={loading && !snapshot}
           loadError={loadError}
           onRetry={() => { void refresh(); }}
           onOverwrite={async (input) => {
-            const result = await getNimiLocalAppClient().aiConfig.overwrite(input);
+            const result = await client.aiConfig.overwrite(input);
             setSnapshot({ config: result.config, revision: result.revision, effectiveSelections: [] });
             // A commit re-reads every mounted consumer, this panel included,
             // even when the drawer closed before the write finished.
@@ -412,6 +377,7 @@ export function GeneratedAIStudioHost({
   readonly onSelectCapability: (capabilityId: string, runId?: string) => void;
   readonly children: ReactNode;
 }) {
+  const [{ hostValue, historyRepository, inspectTargetRuntime }] = useState(() => createGeneratedServices(getNimiLocalAppClient()));
   const snapshot = useNimiNavigationSnapshot<{ id: string; runId?: string }>();
   const [runtime, setRuntime] = useState<StudioRuntimeInspection | null>(null);
   useEffect(() => {

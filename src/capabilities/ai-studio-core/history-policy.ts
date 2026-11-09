@@ -5,6 +5,7 @@ import { studioResultAssetPaths, studioWorldInputSource } from './managed-result
 
 import type { AIStudioHistoryPanelPreferences } from './workspace.js';
 import type { StudioRunHistory, StudioRunHistoryRecord } from './history.js';
+import type { StudioJsonValue } from './runtime-types.js';
 
 // Existing records may truthfully carry a previously truncated input preview.
 const STORED_INPUT_PREVIEW_MAX_BYTES = 16 * 1024;
@@ -80,7 +81,7 @@ function validTimestamp(value: unknown, path: string): void {
   if (Number.isNaN(new Date(requiredString(value, path)).valueOf())) historyError(path, 'requires a valid timestamp');
 }
 
-function validateHistoryJson(value: unknown, path: string, depth = 0): void {
+export function validateHistoryJson(value: unknown, path: string, depth = 0): asserts value is StudioJsonValue {
   if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
   if (typeof value === 'number' && Number.isFinite(value)) return;
   if (depth > 32) historyError(path, 'exceeds the JSON depth bound');
@@ -270,6 +271,24 @@ export function validateStudioHistoryResult(value: unknown, path: string): void 
       historyError(`${path}.sample`, 'requires finite numbers');
     }
     optionalNonNegativeNumber(value.totalTokens, `${path}.totalTokens`);
+    if (value.retrieval !== undefined) {
+      const retrieval = value.retrieval;
+      if (!isJsonObject(retrieval) || !requiredString(retrieval.query, `${path}.retrieval.query`).trim()
+        || !requiredString(value.spaceId, `${path}.spaceId`).trim()
+        || !Array.isArray(retrieval.matches) || !retrieval.matches.length || retrieval.matches.length !== value.vectorCount) historyError(path, 'requires a complete retrieval ranking');
+      const seen = new Set<number>();
+      let previous = Infinity;
+      for (const match of retrieval.matches) {
+        if (!isJsonObject(match)) historyError(path, 'requires retrieval match objects');
+        nonNegativeSafeInteger(match.inputIndex, `${path}.retrieval.inputIndex`);
+        const index = match.inputIndex as number;
+        if (index >= (value.vectorCount as number) || seen.has(index) || typeof match.score !== 'number'
+          || !Number.isFinite(match.score) || match.score < -1 || match.score > 1 || match.score > previous
+          || Array.from(requiredString(match.excerpt, `${path}.retrieval.excerpt`)).length > 300) historyError(path, 'has invalid retrieval order or score');
+        seen.add(index);
+        previous = match.score;
+      }
+    }
     return;
   }
   if (kind === 'text-annotation') {
@@ -284,7 +303,7 @@ export function validateStudioHistoryResult(value: unknown, path: string): void 
     return;
   }
   if (kind === 'text-exchange') {
-    if (value.scenario !== 'tool-call' && value.scenario !== 'structured-output') historyError(`${path}.scenario`, 'is invalid');
+    if (value.scenario !== 'tool-call' && value.scenario !== 'structured-output' && value.scenario !== 'json-object') historyError(`${path}.scenario`, 'is invalid');
     if (!Array.isArray(value.steps) || value.steps.length === 0 || value.steps.length > 16) historyError(`${path}.steps`, 'requires 1 to 16 steps');
     value.steps.forEach((step, index) => {
       const stepPath = `${path}.steps[${index}]`;
@@ -306,6 +325,12 @@ export function validateStudioHistoryResult(value: unknown, path: string): void 
     return;
   }
   if (kind === 'session') {
+    if (value.closure !== undefined) {
+      if (value.capabilityContract !== 'realtime.interact' || !isJsonObject(value.closure) || Object.keys(value.closure).some(key => !['localResourcesReleased','providerSessionClosed'].includes(key)) || typeof value.closure.localResourcesReleased !== 'boolean' || typeof value.closure.providerSessionClosed !== 'boolean') historyError(`${path}.closure`, 'requires independent closure observations');
+    }
+    if (value.audioUsage !== undefined) {
+      if (value.capabilityContract !== 'realtime.interact' || !isJsonObject(value.audioUsage) || Object.keys(value.audioUsage).some(key => !['audioSeconds','final'].includes(key)) || typeof value.audioUsage.audioSeconds !== 'number' || !Number.isFinite(value.audioUsage.audioSeconds) || value.audioUsage.audioSeconds < 0 || value.audioUsage.audioSeconds > 86400 || typeof value.audioUsage.final !== 'boolean') historyError(`${path}.audioUsage`, 'requires bounded reported audio seconds and finality');
+    }
     requiredString(value.capabilityContract, `${path}.capabilityContract`);
     validTimestamp(value.startedAt, `${path}.startedAt`);
     validTimestamp(value.endedAt, `${path}.endedAt`);
@@ -570,6 +595,11 @@ export function parseStudioRunHistory(value: unknown): StudioRunHistory {
   return history;
 }
 
+export function parseStudioRunHistoryRecord(value: unknown): StudioRunHistoryRecord {
+  if (!isJsonObject(value) || typeof value.capabilityId !== 'string') throw new Error('AI Studio history record requires a capability.');
+  return parseStudioRunHistory({ [value.capabilityId]: [value] })[value.capabilityId]![0]!;
+}
+
 export function flattenStudioHistoryRecords(history: StudioRunHistory): StudioRunHistoryRecord[] {
   return Object.values(history).flatMap((records) => records);
 }
@@ -588,8 +618,8 @@ export function studioHistoryFromRecords(records: readonly StudioRunHistoryRecor
   return history;
 }
 
-// Saving a run never removes or shrinks another run. Storage splits complete
-// records across documents; only an explicit user action removes history.
+// Saving a run never removes or shrinks another run. Storage publishes complete
+// records independently; only an explicit user action removes history.
 export function appendStudioRunHistoryRecord(history: StudioRunHistory, record: StudioRunHistoryRecord): StudioRunHistory {
   return studioHistoryFromRecords([record, ...flattenStudioHistoryRecords(history).filter((existing) => existing.id !== record.id)]
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt)));

@@ -62,6 +62,7 @@ const PROVIDER_RATE_LIMITED_REASON_CODE = 'AI_PROVIDER_RATE_LIMITED';
 // target again (or repairing its Connector in Desktop), never by retrying the
 // same request.
 const TARGET_RESELECTION_KEY_SEGMENTS: ReadonlyMap<string, string> = new Map([
+  ['AI_PROVIDER_AUTH_FAILED', 'providerAuthFailed'],
   ['AI_REMOTE_MODEL_CATALOG_STALE', 'catalogStale'],
   ['CAPABILITY_CATALOG_MISMATCH', 'catalogMismatch'],
   ['AI_CONNECTOR_DISABLED', 'connectorDisabled'],
@@ -79,9 +80,22 @@ export function studioNonSuccessNeedsTargetReselection(diagnostics?: StudioNonSu
   return targetReselectionKeySegment(diagnostics) !== '';
 }
 
+function mediaStorageKeySegment(diagnostics?: StudioNonSuccessDiagnostics): string {
+  switch (diagnostics?.reasonCode) {
+    case 'AI_MEDIA_STORAGE_NOT_CONFIGURED': return 'mediaStorageMissing';
+    case 'AI_MEDIA_STORAGE_AUTH_FAILED': return 'mediaStorageCredentials';
+    case 'AI_MEDIA_STORAGE_UNAVAILABLE': return 'mediaStorageUnavailable';
+    case 'AI_MEDIA_STORAGE_OPTION_UNSUPPORTED': return 'mediaStorageVersioning';
+    case 'AI_MEDIA_STORAGE_CLEANUP_UNCONFIRMED': return 'mediaStorageCleanup';
+    default: return '';
+  }
+}
+
 export function studioNonSuccessReasonUserMessage(reason: string, translate: StudioTranslate, capabilityId?: string, diagnostics?: StudioNonSuccessDiagnostics, appInputMessage?: string): string {
+  const storage = capabilityId === 'video.generate' ? mediaStorageKeySegment(diagnostics) : '';
+  if (storage) return translate(`NonSuccess.message.${storage}`);
   if (capabilityId === 'audio.synthesize' && diagnostics && UNAVAILABLE_VOICE_REASON_CODES.has(diagnostics.reasonCode)) return translate('NonSuccess.message.voiceUnavailable');
-  if (reason === 'input-invalid' && capabilityId === 'video.generate' && !diagnostics && appInputMessage) return appInputMessage;
+  if (reason === 'input-invalid' && (capabilityId === 'video.generate' || capabilityId === 'music.generate') && !diagnostics && appInputMessage) return appInputMessage;
   if (reason === 'input-invalid' && capabilityId === 'audio.transcribe') return translate('NonSuccess.message.transcriptionInputInvalid');
   if (capabilityId === 'audio.synthesize' && diagnostics?.reasonCode === VOICE_INPUT_INVALID_REASON_CODE) return translate('NonSuccess.message.voiceInputRequired');
   if (capabilityId === 'audio.synthesize' && diagnostics?.reasonCode === VOICE_TARGET_MISMATCH_REASON_CODE) return translate('NonSuccess.message.voiceTargetMismatch');
@@ -95,6 +109,8 @@ export function studioNonSuccessReasonUserMessage(reason: string, translate: Stu
   if (diagnostics?.reasonCode === LOCAL_LOAD_FAILED_REASON_CODE) return translate('NonSuccess.message.localLoadFailed');
   if (diagnostics?.reasonCode === LOCAL_CONFIGURATION_MISSING_REASON_CODE) return translate('NonSuccess.message.localConfigurationMissing');
   if (capabilityId === 'vision.locate' && diagnostics?.reasonCode === MEDIA_OPTION_UNSUPPORTED_REASON_CODE) return translate('VisionLocate.geometryUnsupported');
+  // @nimi-authority: rule.nimi.runtime.ai-provider.embedding-retrieval-purpose
+  if (capabilityId === 'text.embed' && diagnostics?.reasonCode === MEDIA_OPTION_UNSUPPORTED_REASON_CODE) return translate('NonSuccess.message.embeddingPurposeUnsupported');
   if (diagnostics?.reasonCode === MEDIA_OPTION_UNSUPPORTED_REASON_CODE) return translate('NonSuccess.message.mediaOptionUnsupported');
   if (diagnostics?.reasonCode === MODALITY_UNSUPPORTED_REASON_CODE) return translate('NonSuccess.message.modalityUnsupported');
   if (diagnostics?.reasonCode === PROVIDER_RATE_LIMITED_REASON_CODE) return translate('NonSuccess.message.providerRateLimited');
@@ -106,6 +122,8 @@ export function studioNonSuccessReasonUserMessage(reason: string, translate: Stu
 }
 
 export function studioNonSuccessReasonUserAction(reason: string, translate: StudioTranslate, capabilityId?: string, diagnostics?: StudioNonSuccessDiagnostics): string {
+  const storage = capabilityId === 'video.generate' ? mediaStorageKeySegment(diagnostics) : '';
+  if (storage) return translate(`NonSuccess.action.${storage}`);
   if (capabilityId === 'audio.synthesize' && diagnostics && UNAVAILABLE_VOICE_REASON_CODES.has(diagnostics.reasonCode)) return translate('NonSuccess.action.voiceUnavailable');
   if (reason === 'input-invalid' && capabilityId === 'audio.transcribe') return translate('NonSuccess.action.transcriptionInputInvalid');
   if (capabilityId === 'audio.synthesize' && diagnostics?.reasonCode === VOICE_INPUT_INVALID_REASON_CODE) return translate('NonSuccess.action.voiceInputRequired');
@@ -119,6 +137,7 @@ export function studioNonSuccessReasonUserAction(reason: string, translate: Stud
   if (diagnostics?.reasonCode === LOCAL_LOAD_FAILED_REASON_CODE) return translate('NonSuccess.action.localLoadFailed');
   if (diagnostics?.reasonCode === LOCAL_CONFIGURATION_MISSING_REASON_CODE) return translate('NonSuccess.action.localConfigurationMissing');
   if (capabilityId === 'vision.locate' && diagnostics?.reasonCode === MEDIA_OPTION_UNSUPPORTED_REASON_CODE) return translate('VisionLocate.chooseSupportedGeometry');
+  if (capabilityId === 'text.embed' && diagnostics?.reasonCode === MEDIA_OPTION_UNSUPPORTED_REASON_CODE) return translate('NonSuccess.action.embeddingPurposeUnsupported');
   if (diagnostics?.reasonCode === MEDIA_OPTION_UNSUPPORTED_REASON_CODE) return translate('NonSuccess.action.mediaOptionUnsupported');
   if (diagnostics?.reasonCode === MODALITY_UNSUPPORTED_REASON_CODE) return translate('NonSuccess.action.modalityUnsupported');
   if (diagnostics?.reasonCode === PROVIDER_RATE_LIMITED_REASON_CODE) return translate('NonSuccess.action.providerRateLimited', { usageUrl: NIMI_CHATGPT_PLAN_USAGE_URL });
