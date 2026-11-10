@@ -58,7 +58,11 @@ export function parseMachine(raw: unknown, props: readonly Prop[]): MachinePlan 
   const nodes = value.nodes.map(item => {
     const node = record(item); const objectId = validActor(node.objectId, props);
     const op = node.op as MachineOp;
-    if (!allowedOps(props.find(p => p.id === objectId)!.label).includes(op)) throw new Error(t("这件物品的转换方式不适用，请重新生成。"));
+    const object = props.find(p => p.id === objectId)!;
+    const allowed = allowedOps(object.label);
+    if (!allowed.includes(op)) throw new Error(t("这件物品的转换方式不适用，请重新生成。"), {
+      cause: `Object ${objectId} (${object.label}) has op=${JSON.stringify(node.op)}. Its allowedOps are ${JSON.stringify(allowed)}. Choose one exact allowed enum for this object; do not rename or reclassify the object.`,
+    });
     const melody = node.melody;
     if (!Array.isArray(melody) || melody.length > 3 || melody.some(n => !Number.isInteger(n) || n < 0 || n > 4) || (op === 'source' && !melody.length)) throw new Error(t("发声器没有给出可演奏的旋律，请重新生成。"));
     return { objectId, op, melody: melody as number[], line: shortText(node.line, 120) };
@@ -67,6 +71,12 @@ export function parseMachine(raw: unknown, props: readonly Prop[]): MachinePlan 
   const plan = { title: shortText(value.title, 45), invitation: shortText(value.invitation, 160), nodes };
   machineChallenge(plan, props);
   return plan;
+}
+
+export function planRepairPrompt(prompt: string, draft: string, error: unknown): string {
+  const message = error instanceof Error ? error.message : 'Invalid format';
+  const detail = error instanceof Error && typeof error.cause === 'string' ? `\n${error.cause}` : '';
+  return `${prompt}\nThe last plan was incomplete: ${message}${detail}\nCorrect it and return complete JSON: ${draft}`;
 }
 export function initialMachine(): MachineState { return { path: [], stored: {}, runs: 0, solved: false, lastRun: null }; }
 export function editMachinePath(plan: MachinePlan, path: readonly string[], id: string): string[] {

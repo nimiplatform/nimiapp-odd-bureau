@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { allowedOps, commitPromises, editMachinePath, findStrikeSolution, initialMachine, lineCost, machineChallenge, parseActions, parseMachine, parsePerformance, parsePlaySave, parseStrike, runMachine, simulateMachine, strikeReady } from '../src/odd-bureau/play-rules.ts';
+import { allowedOps, commitPromises, editMachinePath, findStrikeSolution, initialMachine, lineCost, machineChallenge, parseActions, parseMachine, planRepairPrompt, parsePerformance, parsePlaySave, parseStrike, runMachine, simulateMachine, strikeReady } from '../src/odd-bureau/play-rules.ts';
 
 // Synthetic rule examples only. Live acceptance uses actual Runtime generation.
 const props = [
@@ -182,4 +182,18 @@ test('strike saves retain valid commitments and reject rewritten promise chronol
 test('published Chinese playground saves without language retain their full progress', () => {
   const { language, ...published } = machineSave(initialMachine());
   assert.deepEqual(parsePlaySave(published), { ...published, language: 'zh' });
+});
+
+test('bounded plan correction identifies the invalid object operation without accepting it', () => {
+  const invalid = { ...machine, nodes: machine.nodes.map(n => n.objectId === 'cup' ? { ...n, op: 'source', melody: [1] } : n) };
+  const raw = JSON.stringify(invalid);
+  let failure;
+  try { parseMachine(invalid, props); } catch (error) { failure = error; }
+  assert.ok(failure instanceof Error);
+  const correction = planRepairPrompt('Original task', raw, failure);
+  assert.ok(correction.includes('Object cup (杯子)'));
+  assert.ok(correction.includes('allowedOps are ["store"]'));
+  assert.ok(correction.endsWith(raw));
+  assert.throws(() => parseMachine(invalid, props));
+  assert.equal(JSON.stringify(invalid), raw);
 });

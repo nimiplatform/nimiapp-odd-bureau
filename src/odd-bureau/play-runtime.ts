@@ -3,7 +3,7 @@ import { readNimiAppAssetBlob } from '@nimiplatform/kit/core/app-asset-media';
 import { t, language } from './i18n.js';
 import type { Prop } from './game.js';
 import { readSavedDocument, locatePhoto, photoFromFile, rememberInventory, textTurn, type Photo } from './nimi.js';
-import { commitPromises, proposalPrompt, performancePrompt, initialMachine, jsonObject, machinePrompt, parseActions, parseMachine, parsePerformance, parseStrike, parsePlaySave, shortText, strikePrompt, strikeReady, type PlaySave, type PlayRound, type PromiseAction, type StrikePlan } from './play-rules.js';
+import { commitPromises, proposalPrompt, performancePrompt, initialMachine, jsonObject, machinePrompt, parseActions, parseMachine, parsePerformance, parseStrike, parsePlaySave, planRepairPrompt, shortText, strikePrompt, strikeReady, type PlaySave, type PlayRound, type PromiseAction, type StrikePlan } from './play-rules.js';
 import type { JsonValue } from '@nimiplatform/sdk/types';
 
 const photoPaths = new WeakMap<NimiAppScope['client'], WeakMap<Blob, string>>();
@@ -30,7 +30,7 @@ export async function preparePlay(scope: NimiAppScope, photo: Photo, kind: PlayR
   catch (error) {
     signal.throwIfAborted();
     status(t("让 AI 补齐刚才没说清的规则…"));
-    draft = await textTurn(scope, `${prompt}\nThe last plan was incomplete: ${error instanceof Error ? error.message : 'Invalid format'}\nCorrect it and return complete JSON: ${draft}`, signal, 2800);
+    draft = await textTurn(scope, planRepairPrompt(prompt, draft, error), signal, 2800);
     round = parse();
   }
   signal.throwIfAborted();
