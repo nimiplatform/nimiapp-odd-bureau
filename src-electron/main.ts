@@ -48,7 +48,7 @@ if (process.platform === 'win32') {
   app.setAppUserModelId(IS_PRODUCTION_BUNDLE ? NATIVE_BUNDLE_IDENTIFIER : `ai.nimi.dev.apps.${APP_ID}`);
 }
 const chromeHost = createNimiElectronAppChromeHost({
-  metadata: { name: "奇物局", version: "0.1.1" },
+  metadata: { name: "奇物局", version: "0.1.2" },
   allowedRendererUrls, app,
   appCommands: [{ id: 'app.nimi-account', menu: 'file', labels: { en: 'Nimi account', zh: 'Nimi 账号' } }],
   menu: { buildFromTemplate: template => Menu.buildFromTemplate(template as Electron.MenuItemConstructorOptions[]), setApplicationMenu: menu => Menu.setApplicationMenu(menu as Electron.Menu | null) },

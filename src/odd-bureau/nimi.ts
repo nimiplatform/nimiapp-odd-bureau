@@ -27,7 +27,7 @@ export async function photoFromFile(file: Blob, name: string): Promise<Photo> {
 }
 
 export async function samplePhoto(): Promise<Photo> {
-  const response = await fetch(new URL('breakfast-scene.png', document.baseURI));
+  const response = await fetch(new URL('./breakfast-scene.png', import.meta.url));
   if (!response.ok) throw new Error(t("开箱场景没有加载成功，请重新打开 App，或上传自己的照片。"));
   return { ...await photoFromFile(await response.blob(), t("早餐之后")), source: 'sample' };
 }

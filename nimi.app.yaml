@@ -1,6 +1,6 @@
 app_id: nimi.odd-bureau
 display_name: 奇物局
-version: 0.1.1
+version: 0.1.2
 profile: standalone
 manifest_role: submitted-input
 app_access:
@@ -28,13 +28,11 @@ local_development:
   electron:
     renderer_origin: http://127.0.0.1:1485
   web:
-    origin: https://127.0.0.1:4475
-    redirect_uri: https://127.0.0.1:4475/
-    client_id: nimi.odd-bureau.web.dev
-    realm_environment_id: dev
-    realm_url: http://127.0.0.1:3002
-    official_web_url: http://localhost:3000
     command: pnpm run dev:web-renderer
+    local:
+      origin: https://127.0.0.1:4475
+      redirect_uri: https://127.0.0.1:4475/
+      client_id: nimi.odd-bureau.web.dev
 safety_profile:
   intended_audience: general
   content_descriptors: []
@@ -64,3 +62,4 @@ safety_profile:
     commercial_features: []
     sensitive_data_categories: []
   high_impact_decision_uses: []
+public_slug: odd-bureau

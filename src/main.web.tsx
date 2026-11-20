@@ -18,7 +18,7 @@ root.render(<NimiThemeProvider accentPack="nimi-accent"><TooltipProvider>
   <NimiAppSessionProvider session={session}>
     <div className="odd-web-shell">
       <header className="odd-web-account"><NimiAccountControl language={language} hideSignedOut /></header>
-      <NimiAppAccessGate title={language === 'zh' ? '奇物局' : 'Odd Bureau'} language={language}>
+      <NimiAppAccessGate title={language === 'zh' ? '奇物局' : 'Odd Bureau'} language={language} externalAccountControl>
         {() => <AppNavigationProvider><AuthenticatedShell /></AppNavigationProvider>}
       </NimiAppAccessGate>
     </div>

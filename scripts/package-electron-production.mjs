@@ -177,6 +177,8 @@ try {
       await writeFile(packagedManifestPath, `${JSON.stringify(packagedManifest, null, 2)}\n`);
     }],
     win32metadata: {
+      // Match the starter license holder when the App omits its optional author.
+      ...(appPackage.author ? {} : { CompanyName: APP_PRODUCT_NAME }),
       ProductName: APP_PRODUCT_NAME,
       FileDescription: APP_PRODUCT_NAME,
       InternalName: APP_EXECUTABLE_NAME,

@@ -110,6 +110,7 @@
     "emptyNone": "No runs yet",
     "emptyFiltered": "No runs match these filters",
     "loadFailedTitle": "History failed to load",
+    "savedRefreshFailedTitle": "Saved. Could not refresh history.",
     "saveFailedTitle": "History failed to save",
     "deleteRecordAndDocument": "Delete record and its saved result",
     "stopped": "Stopped"

@@ -11,7 +11,7 @@
   "profile": "standalone",
   "appId": "nimi.odd-bureau",
   "appTitle": "奇物局",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "packageName": "@nimiplatform/odd-bureau",
   "packageAuthor": "Nimi Team",
   "cargoPackageName": "nimiplatform-odd-bureau-shell",
@@ -80,7 +80,7 @@
   "appIdentity": {
     "appId": "nimi.odd-bureau",
     "displayName": "奇物局",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "npmPackageName": "@nimiplatform/odd-bureau",
     "author": "Nimi Team",
     "cargoPackageName": "nimiplatform-odd-bureau-shell",
@@ -95,53 +95,28 @@
   },
   "dependencyMatrix": {
     "npm": {
-      "@nimiplatform/app-tools": "^0.14.0",
+      "@nimiplatform/app-tools": "^0.16.0-rc.10",
       "@nimiplatform/nimi-coding": "0.7.0",
-      "@nimiplatform/sdk": "^0.22.2",
-      "@nimiplatform/kit": "^0.22.1",
+      "@nimiplatform/sdk": "^0.24.0-rc.10",
+      "@nimiplatform/kit": "^0.24.0-rc.16",
       "react": "^19.3.1",
       "react-dom": "^19.3.1",
-      "i18next": "^26.5.6",
-      "lucide-react": "^1.61.0",
+      "i18next": "^26.7.2",
+      "lucide-react": "^1.70.0",
       "typescript": "^6.0.3",
-      "vite": "^8.3.5",
-      "tailwindcss": "^4.3.3",
-      "@tauri-apps/cli": "^2.11.4",
-      "@tailwindcss/vite": "^4.3.3",
-      "@vitejs/plugin-react": "^6.1.2",
+      "vite": "^8.3.8",
+      "tailwindcss": "^4.3.5",
+      "@tailwindcss/vite": "^4.3.5",
+      "@vitejs/plugin-react": "^6.2.1",
       "@electron/packager": "^20.3.0",
-      "electron": "^45.0.0",
+      "electron": "^45.4.1",
       "esbuild": "^0.28.2",
       "pngjs": "^7.0.0",
       "yaml": "^2.9.1"
     },
-    "cargo": {
-      "nimi-shell-tauri": "0.11.1",
-      "tauri": {
-        "version": "2",
-        "features": []
-      },
-      "serde": {
-        "version": "1",
-        "features": [
-          "derive"
-        ]
-      },
-      "serde_json": "1",
-      "url": "2",
-      "base64": "0.23",
-      "dirs": "7",
-      "time": "=0.3.55",
-      "tauri-build": {
-        "version": "2",
-        "features": []
-      }
-    },
     "toolchain": {
       "node": ">=24",
-      "pnpm": "10.34.7",
-      "rust": ">=1.80",
-      "tauri": "2"
+      "pnpm": "10.34.7"
     }
   },
   "semantics": {

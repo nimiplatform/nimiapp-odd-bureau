@@ -4,3 +4,7 @@
 .odd-web-shell > .contents { min-height: 0; }
 .odd-web-shell .app-shell { flex: 1; min-height: 0; }
 @media (max-width: 640px) { .odd-web-account > div { flex-wrap: wrap; justify-content: flex-end; } }
+@media (max-width: 640px) {
+  .odd-web-account button,
+  .odd-web-shell:not(:has(.app-shell)) button { min-height: 44px; }
+}
