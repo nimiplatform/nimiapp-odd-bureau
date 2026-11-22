@@ -3,11 +3,9 @@
   "version": "0.1.2",
   "private": true,
   "type": "module",
-  "main": "dist-electron/main.js",
   "packageManager": "pnpm@10.34.7",
   "pnpm": {
     "onlyBuiltDependencies": [
-      "electron",
       "esbuild",
       "protobufjs"
     ]
@@ -16,8 +14,6 @@
     "dev": "nimi-app dev --shell electron",
     "dev:renderer": "vite --host 127.0.0.1 --port 1485 --strictPort",
     "dev:shell": "nimi-app dev",
-    "dev:electron": "nimi-app dev --shell electron",
-    "init": "nimi-app init",
     "sync": "nimi-app sync",
     "check": "nimi-app check",
     "test": "nimi-app test",
@@ -26,10 +22,6 @@
     "pack": "nimi-app pack",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
-    "build:electron": "tsc -p tsconfig.electron.json && node scripts/bundle-electron-preload.mjs",
-    "build:electron:production": "node scripts/clean-electron-production.mjs && pnpm run build && pnpm run build:electron && node scripts/package-electron-production.mjs",
-    "build:tauri:production": "tauri build",
-    "postinstall": "install-electron --no",
     "validate": "node scripts/validate.mjs",
     "dev:web": "nimi-app dev --platform web",
     "dev:web-renderer": "vite --config vite.web.config.ts --mode web",
@@ -47,18 +39,13 @@
     "react-i18next": "^17.0.0"
   },
   "devDependencies": {
-    "@electron/packager": "^20.3.0",
-    "@nimiplatform/app-tools": "^0.16.0-rc.10",
+    "@nimiplatform/app-tools": "^0.16.0-rc.13",
     "@nimiplatform/nimi-coding": "0.7.0",
     "@tailwindcss/vite": "^4.3.5",
-    "@tauri-apps/cli": "^2.11.4",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.2.1",
-    "electron": "^45.4.1",
-    "esbuild": "^0.28.2",
-    "pngjs": "^7.0.0",
     "tailwindcss": "^4.3.5",
     "typescript": "^6.0.3",
     "vite": "^8.3.8",

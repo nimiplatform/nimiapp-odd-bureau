@@ -63,3 +63,10 @@ safety_profile:
     sensitive_data_categories: []
   high_impact_decision_uses: []
 public_slug: odd-bureau
+desktop:
+  window:
+    width: 1180
+    height: 780
+    min_width: 360
+    min_height: 560
+    title_bar_style: hidden

@@ -14,4 +14,8 @@ export default defineConfig({
   resolve: {
     dedupe: ['react', 'react-dom', 'react/jsx-runtime', 'react/jsx-dev-runtime'],
   },
+  build: {
+    outDir: 'dist/renderer',
+    emptyOutDir: true,
+  },
 });

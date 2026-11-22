@@ -1,8 +1,8 @@
 # AGENTS.md
 
 ## Scope
-- Treat `.nimi/app-scaffold/{intent,lock}.json` as app-scaffold intent and lock state.
-- Treat `.nimi/{config,contracts,methodology}/**` as `@nimiplatform/nimi-coding` managed projections created by `pnpm run init`.
+- This repository is an adopted `managed-web` Nimi App (`managed-web-pnpm-vite`); desktop runs inside Nimi's shared managed desktop carrier with no App-owned `src-electron/` host.
+- Treat `.nimi/{config,contracts,methodology}/**` as `@nimiplatform/nimi-coding` managed projections maintained via `pnpm run sync`.
 - Keep auth, Runtime, App Access declaration, manifest, and Tauri shell glue in scaffold-managed files.
 - App-owned product code is `src/workbench-core/**`, selected `src/capabilities/**`, `src/shell/routes/product-area.tsx`, and App-authored product screens, state, tests, styles, and bounded native helpers.
 - Scaffold-managed code is the carrier/auth wiring, identity, manifests, project tooling, bounded native integration, and `src/scaffold/generated/**` composition glue.
@@ -28,7 +28,7 @@
 - Read platform authority only when ownership or semantics remain ambiguous; skip unrelated platform packages and generated files.
 
 ## Verification Commands
-- After `pnpm install` and `pnpm run init`, run `pnpm run sync`, `pnpm run check`, the directly affected tests, and the affected build.
+- After `pnpm install`, run `pnpm run sync`, `pnpm run check`, `pnpm run test:app`, and `pnpm run build`.
 - Run the official Desktop-supervised App journey when product interaction is in scope; shell or native checks alone do not replace it.
 - Mark every product path not actually run as `NOT-VERIFIED`. Help text, focused tests, and CDP visibility do not establish implementation or release acceptance.
 
