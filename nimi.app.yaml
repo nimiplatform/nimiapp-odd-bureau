@@ -1,6 +1,6 @@
 app_id: nimi.odd-bureau
 display_name: 奇物局
-version: 0.1.2
+version: 0.1.3
 profile: standalone
 manifest_role: submitted-input
 app_access:

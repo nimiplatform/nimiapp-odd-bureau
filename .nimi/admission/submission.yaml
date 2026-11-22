@@ -1,6 +1,6 @@
 app_id: nimi.odd-bureau
 display_name: 奇物局
-version: 0.1.2
+version: 0.1.3
 profile: standalone
 npm_package_name: "@nimiplatform/odd-bureau"
 cargo_package_name: nimiplatform-odd-bureau-shell
